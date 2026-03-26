@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Grabbit",
+    "slug": "grabbit-student-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1A2E"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1A1A2E"
+      },
+      "package": "com.grabbit.studentapp"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
