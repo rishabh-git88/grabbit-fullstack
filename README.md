@@ -1,3 +1,4 @@
+
 # 🐇 Grabbit — Centralized College Food Ordering System
 
 A full-stack food ordering platform for college campuses. Students order food via mobile app; vendors manage orders and menus via a web dashboard.
@@ -386,3 +387,5 @@ grabbit-student-app/
 ## 📄 License
 
 MIT — built for campus use and open learning.
+=======
+
