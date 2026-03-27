@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'http://10.0.2.2:5000'; // Android emulator
-// const SOCKET_URL = 'http://localhost:5000'; // iOS simulator
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
 export const useOrderSocket = (userId, onStatusUpdate) => {
   const socketRef = useRef(null);
