@@ -7,6 +7,11 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+// Normalize MONGO_URI in case it was saved with the key prefix (e.g. "MONGO_URI=mongodb+srv://...")
+if (process.env.MONGO_URI && process.env.MONGO_URI.startsWith('MONGO_URI=')) {
+  process.env.MONGO_URI = process.env.MONGO_URI.substring('MONGO_URI='.length);
+}
+
 const authRoutes = require('./routes/auth');
 const cafeRoutes = require('./routes/cafe');
 const menuRoutes = require('./routes/menu');
@@ -35,13 +40,19 @@ app.use(cors({
 app.use(express.json());
 
 // MongoDB Connection
-mongoose
-  .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/grabbit')
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/grabbit', {
+      serverSelectionTimeoutMS: 10000,
+    });
+    console.log('✅ MongoDB connected');
+  } catch (err) {
+    console.error('❌ MongoDB connection error:', err.message);
+    console.log('🔄 Retrying MongoDB connection in 10 seconds...');
+    setTimeout(connectDB, 10000);
+  }
+};
+connectDB();
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -10,6 +10,9 @@ channel = "stable-25_05"
 [userenv.shared]
 REACT_APP_API_URL = "/api"
 PORT = "3001"
+JWT_SECRET = "grabbit_super_secret_key_change_in_production"
+JWT_EXPIRE = "7d"
+NODE_ENV = "development"
 
 [workflows]
 runButton = "Project"
