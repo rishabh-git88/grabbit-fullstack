@@ -1,0 +1,12 @@
+modules = ["nodejs-20", "ruby-3.2"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+REACT_APP_API_URL = "/api"
+PORT = "3001"

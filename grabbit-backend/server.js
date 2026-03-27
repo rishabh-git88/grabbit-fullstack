@@ -19,11 +19,7 @@ const server = http.createServer(app);
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.VENDOR_DASHBOARD_URL || 'http://localhost:3000',
-      process.env.STUDENT_APP_URL || 'http://localhost:3001',
-      'http://localhost:8081', // React Native Metro bundler
-    ],
+    origin: '*',
     methods: ['GET', 'POST'],
   },
 });
@@ -33,12 +29,8 @@ app.set('io', io);
 
 // Middleware
 app.use(cors({
-  origin: [
-    process.env.VENDOR_DASHBOARD_URL || 'http://localhost:3000',
-    process.env.STUDENT_APP_URL || 'http://localhost:3001',
-    'http://localhost:8081',
-  ],
-  credentials: true,
+  origin: '*',
+  credentials: false,
 }));
 app.use(express.json());
 
@@ -90,7 +82,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, 'localhost', () => {
   console.log(`🚀 Grabbit server running on port ${PORT}`);
 });
