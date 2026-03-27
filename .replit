@@ -13,6 +13,7 @@ PORT = "3001"
 JWT_SECRET = "grabbit_super_secret_key_change_in_production"
 JWT_EXPIRE = "7d"
 NODE_ENV = "development"
+MONGODB_CONNECTION = "mongodb+srv://workrishabhverma88_db_user:SvL32Gb8TFg6fnTV@grabbit.ftpsz9d.mongodb.net/grabbit?retryWrites=true&w=majority&appName=Grabbit"
 
 [workflows]
 runButton = "Project"
@@ -78,8 +79,16 @@ localPort = 3001
 externalPort = 3001
 
 [[ports]]
+localPort = 3002
+externalPort = 3003
+
+[[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3002
 
 [deployment]
 deploymentTarget = "vm"

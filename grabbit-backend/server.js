@@ -7,18 +7,13 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-// Normalize MONGO_URI in case it was saved with the key prefix
-let rawUri = process.env.MONGO_URI || '';
+// Prefer MONGODB_CONNECTION (env var) over MONGO_URI (legacy secret)
+let rawUri = process.env.MONGODB_CONNECTION || process.env.MONGO_URI || '';
 if (rawUri.startsWith('MONGO_URI=')) {
   rawUri = rawUri.substring('MONGO_URI='.length);
 }
-// Also strip any leading/trailing whitespace or newlines
 rawUri = rawUri.trim();
 process.env.MONGO_URI = rawUri;
-
-// Diagnostic: log URI shape without credentials
-const uriForLog = rawUri.replace(/:([^@]+)@/, ':****@');
-console.log('🔍 MONGO_URI shape:', uriForLog || '(empty - not set)');
 
 const authRoutes = require('./routes/auth');
 const cafeRoutes = require('./routes/cafe');
