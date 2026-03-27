@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
-  TextInput, Alert, ActivityIndicator, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet,
+  TextInput, Alert, ActivityIndicator, ScrollView, StatusBar,
 } from 'react-native';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -22,32 +22,33 @@ const CartScreen = ({ route, navigation }) => {
     if (cart.length === 0) return;
     setPlacing(true);
     try {
-      // 1. Create order
       const orderRes = await orderAPI.place({
         cafeId: cafe._id,
         items: cart.map(i => ({ itemId: i.itemId, quantity: i.quantity })),
         notes,
       });
       const order = orderRes.data.order;
-
-      // 2. Create payment (simulated or Razorpay)
       const payRes = await paymentAPI.create(order._id);
 
       if (payRes.data.simulated) {
-        // Simulated payment — go straight to tracking
         clearCart();
-        navigation.reset({ index: 0, routes: [{ name: 'OrderTracking', params: { orderId: order._id, orderNumber: order.orderNumber } }] });
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'OrderTracking', params: { orderId: order._id, orderNumber: order.orderNumber } }],
+        });
       } else {
-        // Real Razorpay — in production integrate RazorpayCheckout here
         Alert.alert(
           'Payment Required',
           `Pay ₹${advance} (60% advance) to confirm your order.\n\nRazorpay Order ID: ${payRes.data.razorpayOrderId}`,
           [
             {
               text: 'Simulate Success',
-              onPress: async () => {
+              onPress: () => {
                 clearCart();
-                navigation.reset({ index: 0, routes: [{ name: 'OrderTracking', params: { orderId: order._id, orderNumber: order.orderNumber } }] });
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'OrderTracking', params: { orderId: order._id, orderNumber: order.orderNumber } }],
+                });
               },
             },
             { text: 'Cancel', style: 'cancel' },
@@ -63,11 +64,13 @@ const CartScreen = ({ route, navigation }) => {
 
   if (cart.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View style={styles.emptyScreen}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
         <Text style={styles.emptyEmoji}>🛒</Text>
-        <Text style={styles.emptyTitle}>Cart is empty</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backToMenuBtn}>
-          <Text style={styles.backToMenuText}>Browse Menu</Text>
+        <Text style={styles.emptyTitle}>Your cart is empty</Text>
+        <Text style={styles.emptyDesc}>Looks like you haven't added anything yet</Text>
+        <TouchableOpacity style={styles.browseBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.browseBtnText}>Browse Menu</Text>
         </TouchableOpacity>
       </View>
     );
@@ -75,79 +78,119 @@ const CartScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
+          <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Your Cart</Text>
-        <Text style={styles.cafeName}>{cafe.name}</Text>
+        <View>
+          <Text style={styles.title}>Your Cart</Text>
+          <Text style={styles.subtitle}>{cafe.name}</Text>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Items */}
-        {cart.map(item => (
-          <View key={item.itemId} style={styles.cartItem}>
-            <View style={styles.cartItemInfo}>
-              <Text style={styles.cartItemName}>{item.name}</Text>
-              <Text style={styles.cartItemPrice}>₹{item.price} each</Text>
-            </View>
-            <View style={styles.qtyRow}>
-              <TouchableOpacity style={styles.qtyBtn} onPress={() => removeItem(item.itemId)}>
-                <Text style={styles.qtyBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.qtyText}>{item.quantity}</Text>
-              <TouchableOpacity style={[styles.qtyBtn, styles.qtyBtnAdd]} onPress={() => addItem(item, cafe)}>
-                <Text style={styles.qtyBtnText}>+</Text>
-              </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Items list */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Order Items</Text>
+          {cart.map(item => (
+            <View key={item.itemId} style={styles.cartItem}>
+              <View style={styles.itemEmojiBadge}>
+                <Text style={styles.itemEmoji}>🍽️</Text>
+              </View>
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={styles.itemUnit}>₹{item.price} each</Text>
+              </View>
+              <View style={styles.qtyRow}>
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => removeItem(item.itemId)}>
+                  <Text style={styles.qtyBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.qtyNum}>{item.quantity}</Text>
+                <TouchableOpacity style={[styles.qtyBtn, styles.qtyBtnAdd]} onPress={() => addItem(item, cafe)}>
+                  <Text style={[styles.qtyBtnText, { color: '#fff' }]}>+</Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.itemTotal}>₹{(item.price * item.quantity).toFixed(0)}</Text>
             </View>
-          </View>
-        ))}
+          ))}
+        </View>
 
-        {/* Notes */}
-        <View style={styles.notesBox}>
-          <Text style={styles.notesLabel}>Special Instructions (optional)</Text>
+        {/* Special instructions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Special Instructions</Text>
           <TextInput
             style={styles.notesInput}
-            value={notes} onChangeText={setNotes}
-            placeholder="e.g. Less spicy, no onions…"
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="E.g. Less spicy, no onions, extra sauce…"
             placeholderTextColor={COLORS.muted}
-            multiline numberOfLines={2}
+            multiline
+            numberOfLines={2}
           />
         </View>
 
-        {/* Payment breakdown */}
-        <View style={styles.breakdown}>
-          <Text style={styles.breakdownTitle}>Payment Summary</Text>
-          <View style={styles.breakdownRow}>
-            <Text style={styles.breakdownLabel}>Total Amount</Text>
-            <Text style={styles.breakdownValue}>₹{totalAmount.toFixed(0)}</Text>
+        {/* Bill summary */}
+        <View style={styles.billCard}>
+          <Text style={styles.billTitle}>Bill Details</Text>
+
+          <View style={styles.billRow}>
+            <Text style={styles.billLabel}>Item Total</Text>
+            <Text style={styles.billValue}>₹{totalAmount.toFixed(0)}</Text>
           </View>
-          <View style={[styles.breakdownRow, styles.payNowRow]}>
-            <View>
-              <Text style={[styles.breakdownLabel, { color: COLORS.orange }]}>Pay Now (60%)</Text>
-              <Text style={styles.breakdownSub}>Online payment to confirm order</Text>
-            </View>
-            <Text style={[styles.breakdownValue, { color: COLORS.orange, fontSize: 20 }]}>₹{advance.toFixed(0)}</Text>
+          <View style={styles.billRow}>
+            <Text style={styles.billLabel}>Delivery Fee</Text>
+            <Text style={[styles.billValue, { color: COLORS.green }]}>FREE</Text>
           </View>
-          <View style={styles.breakdownRow}>
-            <View>
-              <Text style={styles.breakdownLabel}>Pay at Pickup (40%)</Text>
-              <Text style={styles.breakdownSub}>Pay remaining when collecting</Text>
+
+          <View style={styles.billDivider} />
+
+          <View style={styles.billRow}>
+            <Text style={[styles.billLabel, { fontWeight: '800', color: COLORS.text }]}>Total</Text>
+            <Text style={[styles.billValue, { fontWeight: '900', fontSize: 18, color: COLORS.text }]}>₹{totalAmount.toFixed(0)}</Text>
+          </View>
+        </View>
+
+        {/* Payment split */}
+        <View style={styles.splitCard}>
+          <Text style={styles.splitTitle}>Payment Split</Text>
+          <View style={styles.splitRow}>
+            <View style={[styles.splitHalf, { borderRightWidth: 1, borderRightColor: COLORS.border }]}>
+              <Text style={styles.splitIcon}>💳</Text>
+              <Text style={styles.splitAmt} numberOfLines={1}>₹{advance.toFixed(0)}</Text>
+              <Text style={styles.splitLabel}>Pay Now (60%)</Text>
+              <Text style={styles.splitDesc}>Online</Text>
             </View>
-            <Text style={[styles.breakdownValue, { color: COLORS.muted }]}>₹{remaining.toFixed(0)}</Text>
+            <View style={styles.splitHalf}>
+              <Text style={styles.splitIcon}>🏷️</Text>
+              <Text style={styles.splitAmt}>₹{remaining.toFixed(0)}</Text>
+              <Text style={styles.splitLabel}>At Pickup (40%)</Text>
+              <Text style={styles.splitDesc}>Cash / UPI</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Place Order button */}
+      {/* Footer CTA */}
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.placeBtn, placing && styles.placeBtnDisabled]} onPress={handlePlaceOrder} disabled={placing}>
-          {placing ? <ActivityIndicator color="#fff" /> : (
-            <>
-              <Text style={styles.placeBtnText}>Pay ₹{advance.toFixed(0)} & Place Order</Text>
-              <Text style={styles.placeBtnSub}>60% advance · rest at pickup</Text>
-            </>
+        <TouchableOpacity
+          style={[styles.placeBtn, placing && styles.placeBtnDisabled]}
+          onPress={handlePlaceOrder}
+          disabled={placing}
+          activeOpacity={0.88}
+        >
+          {placing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <View style={styles.placeBtnInner}>
+              <Text style={styles.placeBtnMain}>Pay ₹{advance.toFixed(0)} & Place Order</Text>
+              <Text style={styles.placeBtnSub}>60% now · 40% at pickup</Text>
+            </View>
           )}
         </TouchableOpacity>
       </View>
@@ -156,43 +199,162 @@ const CartScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
-  emptyContainer: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyEmoji: { fontSize: 64 },
-  emptyTitle: { color: COLORS.text, fontSize: 20, fontWeight: '700' },
-  backToMenuBtn: { backgroundColor: COLORS.orange, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
-  backToMenuText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 16 },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  backText: { color: COLORS.text, fontSize: 20 },
-  title: { color: COLORS.text, fontSize: 24, fontWeight: '800' },
-  cafeName: { color: COLORS.muted, fontSize: 13, marginTop: 2 },
-  scroll: { paddingHorizontal: 20, paddingBottom: 120 },
-  cartItem: { backgroundColor: COLORS.card, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
-  cartItemInfo: { marginBottom: 10 },
-  cartItemName: { color: COLORS.text, fontSize: 15, fontWeight: '600' },
-  cartItemPrice: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  qtyBtn: { width: 30, height: 30, borderRadius: 9, backgroundColor: COLORS.accent, alignItems: 'center', justifyContent: 'center' },
-  qtyBtnAdd: { backgroundColor: COLORS.orange },
-  qtyBtnText: { color: '#fff', fontSize: 18, fontWeight: '700', lineHeight: 22 },
-  qtyText: { color: COLORS.text, fontWeight: '700', fontSize: 16, minWidth: 24, textAlign: 'center' },
-  itemTotal: { color: COLORS.orange, fontWeight: '700', fontSize: 15, marginLeft: 'auto' },
-  notesBox: { marginVertical: 8 },
-  notesLabel: { color: COLORS.muted, fontSize: 12, fontWeight: '600', marginBottom: 8, letterSpacing: 0.5 },
-  notesInput: { backgroundColor: COLORS.card, borderRadius: 14, padding: 14, color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border, minHeight: 70, textAlignVertical: 'top' },
-  breakdown: { backgroundColor: COLORS.card, borderRadius: 20, padding: 18, marginTop: 12, borderWidth: 1, borderColor: COLORS.border },
-  breakdownTitle: { color: COLORS.text, fontWeight: '700', fontSize: 15, marginBottom: 14 },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
-  payNowRow: { backgroundColor: COLORS.orange + '08', marginHorizontal: -18, paddingHorizontal: 18, borderRadius: 0 },
-  breakdownLabel: { color: COLORS.text, fontSize: 14, fontWeight: '600' },
-  breakdownSub: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
-  breakdownValue: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.bg, padding: 20, paddingBottom: 34, borderTopWidth: 1, borderTopColor: COLORS.border },
-  placeBtn: { backgroundColor: COLORS.orange, borderRadius: 18, paddingVertical: 16, alignItems: 'center', shadowColor: COLORS.orange, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
-  placeBtnDisabled: { opacity: 0.6 },
-  placeBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
-  placeBtnSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 3 },
+  container: { flex: 1, backgroundColor: COLORS.surface },
+  emptyScreen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 32,
+  },
+  emptyEmoji: { fontSize: 72, marginBottom: 8 },
+  emptyTitle: { color: COLORS.text, fontSize: 22, fontWeight: '800' },
+  emptyDesc: { color: COLORS.muted, fontSize: 14, textAlign: 'center' },
+  browseBtn: {
+    backgroundColor: COLORS.orange,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  browseBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  header: {
+    backgroundColor: COLORS.bg,
+    paddingTop: 56,
+    paddingHorizontal: 20,
+    paddingBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  backArrow: { color: COLORS.text, fontSize: 22 },
+  title: { color: COLORS.text, fontSize: 22, fontWeight: '800' },
+  subtitle: { color: COLORS.muted, fontSize: 13, marginTop: 1 },
+  scroll: { padding: 16, paddingBottom: 120 },
+  section: { marginBottom: 14 },
+  sectionLabel: { color: COLORS.subtext, fontSize: 13, fontWeight: '700', marginBottom: 10, letterSpacing: 0.3 },
+  cartItem: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  itemEmojiBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.orangeLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemEmoji: { fontSize: 22 },
+  itemInfo: { flex: 1 },
+  itemName: { color: COLORS.text, fontSize: 14, fontWeight: '700' },
+  itemUnit: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  qtyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  qtyBtnAdd: { backgroundColor: COLORS.orange, borderColor: COLORS.orange },
+  qtyBtnText: { color: COLORS.text, fontSize: 16, fontWeight: '800', lineHeight: 20 },
+  qtyNum: { color: COLORS.text, fontWeight: '800', fontSize: 15, minWidth: 20, textAlign: 'center' },
+  itemTotal: { color: COLORS.orange, fontWeight: '800', fontSize: 15, minWidth: 48, textAlign: 'right' },
+  notesInput: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 14,
+    padding: 14,
+    color: COLORS.text,
+    fontSize: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  billCard: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  billTitle: { color: COLORS.text, fontWeight: '800', fontSize: 15, marginBottom: 14 },
+  billRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  billLabel: { color: COLORS.subtext, fontSize: 14 },
+  billValue: { color: COLORS.subtext, fontSize: 14, fontWeight: '600' },
+  billDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 10 },
+  splitCard: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  splitTitle: { color: COLORS.text, fontWeight: '800', fontSize: 15, padding: 18, paddingBottom: 14 },
+  splitRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.border },
+  splitHalf: { flex: 1, alignItems: 'center', paddingVertical: 18, gap: 4 },
+  splitIcon: { fontSize: 26, marginBottom: 4 },
+  splitAmt: { color: COLORS.text, fontSize: 20, fontWeight: '900' },
+  splitLabel: { color: COLORS.subtext, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  splitDesc: { color: COLORS.muted, fontSize: 11, textAlign: 'center' },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.bg,
+    padding: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  placeBtn: {
+    backgroundColor: COLORS.orange,
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: 'center',
+    shadowColor: COLORS.orange,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  placeBtnDisabled: { opacity: 0.65 },
+  placeBtnInner: { alignItems: 'center', gap: 3 },
+  placeBtnMain: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  placeBtnSub: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
 });
 
 export default CartScreen;

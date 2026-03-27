@@ -5,15 +5,23 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "scheme": "grabbit",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#1A1A2E"
+      "backgroundColor": "#FF6300"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.grabbit.studentapp"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#1A1A2E"
+        "backgroundColor": "#FF6300"
       },
       "package": "com.grabbit.studentapp"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font"

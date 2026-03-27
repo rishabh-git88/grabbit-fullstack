@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
@@ -16,50 +16,95 @@ import { COLORS } from '../utils/theme';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TabIcon = ({ emoji, focused }) => (
-  <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
+const TabIcon = ({ emoji, label, focused }) => (
+  <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
+    <Text style={tabStyles.emoji}>{emoji}</Text>
+  </View>
 );
+
+const tabStyles = StyleSheet.create({
+  iconWrap: {
+    width: 42,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  iconWrapActive: {
+    backgroundColor: COLORS.orangeLight,
+  },
+  emoji: { fontSize: 20 },
+});
 
 const HomeTabs = () => (
   <Tab.Navigator
     screenOptions={{
       headerShown: false,
       tabBarStyle: {
-        backgroundColor: COLORS.card,
+        backgroundColor: COLORS.bg,
         borderTopColor: COLORS.border,
         borderTopWidth: 1,
-        paddingBottom: 8,
+        paddingBottom: 10,
         paddingTop: 8,
-        height: 64,
+        height: 68,
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 16,
       },
       tabBarActiveTintColor: COLORS.orange,
       tabBarInactiveTintColor: COLORS.muted,
-      tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+      tabBarLabelStyle: {
+        fontSize: 11,
+        fontWeight: '700',
+        marginTop: 2,
+      },
     }}
   >
     <Tab.Screen
-      name="Home" component={HomeScreen}
-      options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />, tabBarLabel: 'Cafes' }}
+      name="Home"
+      component={HomeScreen}
+      options={{
+        tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+        tabBarLabel: 'Explore',
+      }}
     />
     <Tab.Screen
-      name="Orders" component={OrdersScreen}
-      options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />, tabBarLabel: 'My Orders' }}
+      name="Orders"
+      component={OrdersScreen}
+      options={{
+        tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />,
+        tabBarLabel: 'Orders',
+      }}
     />
   </Tab.Navigator>
+);
+
+const SplashScreen = () => (
+  <View style={{ flex: 1, backgroundColor: COLORS.orange, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+    <View style={{
+      width: 80, height: 80, borderRadius: 24,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)',
+    }}>
+      <Text style={{ color: '#fff', fontSize: 42, fontWeight: '900' }}>G</Text>
+    </View>
+    <Text style={{ color: '#fff', fontSize: 44, fontWeight: '900', letterSpacing: 4 }}>GRABBIT</Text>
+    <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 15, fontWeight: '500' }}>
+      Campus food, fast & easy 🐇
+    </Text>
+  </View>
 );
 
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
-  if (loading) return (
-    <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: COLORS.orange, fontSize: 28, fontWeight: '900' }}>grabbit</Text>
-    </View>
-  );
+  if (loading) return <SplashScreen />;
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}>
         {!user ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
