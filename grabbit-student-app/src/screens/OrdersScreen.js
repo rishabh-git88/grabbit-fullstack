@@ -7,56 +7,68 @@ import { orderAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, STATUS_COLORS } from '../utils/theme';
 
-const STATUS_ICONS = {
-  placed: '🕐',
-  accepted: '✅',
-  preparing: '👨‍🍳',
-  ready: '🔔',
-  completed: '✅',
-  rejected: '❌',
+const STATUS_META = {
+  placed:    { icon: '🕐', pulse: true },
+  accepted:  { icon: '✅', pulse: true },
+  preparing: { icon: '👨‍🍳', pulse: true },
+  ready:     { icon: '🔔', pulse: true },
+  completed: { icon: '✅', pulse: false },
+  rejected:  { icon: '❌', pulse: false },
 };
 
 const OrderCard = ({ order, onPress }) => {
   const cfg = STATUS_COLORS[order.status] || STATUS_COLORS.placed;
-  const icon = STATUS_ICONS[order.status] || '🕐';
-  const date = new Date(order.createdAt).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-  });
+  const meta = STATUS_META[order.status] || STATUS_META.placed;
   const isActive = ['placed', 'accepted', 'preparing', 'ready'].includes(order.status);
+
+  const date = new Date(order.createdAt).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short',
+  });
+  const time = new Date(order.createdAt).toLocaleTimeString('en-IN', {
+    hour: '2-digit', minute: '2-digit',
+  });
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {isActive && <View style={styles.activeLine} />}
+      {isActive && <View style={styles.activeAccent} />}
 
-      <View style={styles.cardTop}>
-        <View style={styles.cardLeft}>
-          <View style={[styles.statusIcon, { backgroundColor: cfg.bg }]}>
-            <Text style={styles.statusEmoji}>{icon}</Text>
-          </View>
-          <View>
-            <Text style={styles.orderNum}>#{order.orderNumber}</Text>
-            <Text style={styles.cafeName}>{order.cafeId?.name}</Text>
-          </View>
+      <View style={styles.cardHeader}>
+        <View style={[styles.iconCircle, { backgroundColor: cfg.bg }]}>
+          <Text style={styles.iconEmoji}>{meta.icon}</Text>
         </View>
-        <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+
+        <View style={styles.orderMeta}>
+          <Text style={styles.orderNum}>Order #{order.orderNumber}</Text>
+          <Text style={styles.cafeName}>{order.cafeId?.name}</Text>
+        </View>
+
+        <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
           <Text style={[styles.statusText, { color: cfg.text }]}>{cfg.label}</Text>
         </View>
       </View>
 
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Items */}
       <Text style={styles.itemsList} numberOfLines={1}>
-        {order.items.map(i => `${i.name} ×${i.quantity}`).join(' · ')}
+        {order.items.map(i => `${i.name} ×${i.quantity}`).join('  ·  ')}
       </Text>
 
-      <View style={styles.cardBottom}>
-        <Text style={styles.date}>{date}</Text>
-        <Text style={styles.amount}>₹{order.totalAmount}</Text>
+      <View style={styles.cardFooter}>
+        <View style={styles.dateWrap}>
+          <Text style={styles.dateText}>{date}</Text>
+          <Text style={styles.timeDot}>·</Text>
+          <Text style={styles.dateText}>{time}</Text>
+        </View>
+        <Text style={styles.amountText}>₹{order.totalAmount}</Text>
       </View>
 
       {isActive && (
-        <View style={styles.trackRow}>
-          <Text style={styles.trackText}>Tap to track order</Text>
-          <Text style={styles.trackArrow}>→</Text>
-        </View>
+        <TouchableOpacity style={styles.trackBtn} onPress={onPress} activeOpacity={0.85}>
+          <Text style={styles.trackBtnText}>Track your order</Text>
+          <Text style={styles.trackArrow}> →</Text>
+        </TouchableOpacity>
       )}
     </TouchableOpacity>
   );
@@ -81,13 +93,20 @@ const OrdersScreen = ({ navigation }) => {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
+  const activeOrders = orders.filter(o => ['placed','accepted','preparing','ready'].includes(o.status));
+  const pastOrders = orders.filter(o => ['completed','rejected'].includes(o.status));
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
 
       <View style={styles.header}>
-        <Text style={styles.title}>My Orders</Text>
-        <Text style={styles.subtitle}>Your order history</Text>
+        <Text style={styles.headerTitle}>My Orders</Text>
+        {orders.length > 0 && (
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{orders.length}</Text>
+          </View>
+        )}
       </View>
 
       {loading ? (
@@ -117,11 +136,21 @@ const OrdersScreen = ({ navigation }) => {
               colors={[COLORS.orange]}
             />
           }
+          ListHeaderComponent={
+            activeOrders.length > 0 ? (
+              <View style={styles.sectionLabel}>
+                <View style={styles.activePulse} />
+                <Text style={styles.sectionLabelText}>Active orders</Text>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyEmoji}>🍽️</Text>
+              <View style={styles.emptyIconBox}>
+                <Text style={styles.emptyEmoji}>🍽️</Text>
+              </View>
               <Text style={styles.emptyTitle}>No orders yet</Text>
-              <Text style={styles.emptyDesc}>Your order history will appear here</Text>
+              <Text style={styles.emptyDesc}>Your order history will appear here once you place your first order</Text>
             </View>
           }
         />
@@ -137,13 +166,38 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingHorizontal: 20,
     paddingBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  title: { color: COLORS.text, fontSize: 26, fontWeight: '900' },
-  subtitle: { color: COLORS.muted, fontSize: 13, marginTop: 2 },
+  headerTitle: { color: COLORS.text, fontSize: 26, fontWeight: '900', flex: 1 },
+  countBadge: {
+    backgroundColor: COLORS.orangeLight,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  countText: { color: COLORS.orange, fontWeight: '800', fontSize: 13 },
+
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { padding: 16, paddingBottom: 100 },
+
+  sectionLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  activePulse: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.orange,
+  },
+  sectionLabelText: { color: COLORS.text, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+
   card: {
     backgroundColor: COLORS.bg,
     borderRadius: 20,
@@ -151,62 +205,86 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.06,
-    shadowRadius: 10,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    elevation: 3,
     padding: 16,
   },
-  activeLine: {
+  activeAccent: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
     width: 4,
     backgroundColor: COLORS.orange,
-    borderRadius: 4,
   },
-  cardTop: {
+  cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
   },
-  cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  statusIcon: {
-    width: 44,
-    height: 44,
+  iconCircle: {
+    width: 46,
+    height: 46,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusEmoji: { fontSize: 22 },
+  iconEmoji: { fontSize: 22 },
+  orderMeta: { flex: 1 },
   orderNum: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
   cafeName: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
-  statusPill: {
+  statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
   },
   statusText: { fontSize: 11, fontWeight: '700' },
-  itemsList: { color: COLORS.subtext, fontSize: 12, marginBottom: 10, lineHeight: 16 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  date: { color: COLORS.muted, fontSize: 12 },
-  amount: { color: COLORS.orange, fontWeight: '800', fontSize: 16 },
-  trackRow: {
+
+  divider: { height: 1, backgroundColor: COLORS.border, marginBottom: 10 },
+
+  itemsList: {
+    color: COLORS.subtext,
+    fontSize: 13,
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
+  },
+  dateWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dateText: { color: COLORS.muted, fontSize: 12 },
+  timeDot: { color: COLORS.muted, fontSize: 12 },
+  amountText: { color: COLORS.text, fontWeight: '800', fontSize: 15 },
+
+  trackBtn: {
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  trackText: { color: COLORS.orange, fontSize: 12, fontWeight: '600' },
-  trackArrow: { color: COLORS.orange, fontSize: 14, fontWeight: '700' },
-  emptyBox: { alignItems: 'center', paddingTop: 80, gap: 10 },
-  emptyEmoji: { fontSize: 64, marginBottom: 8 },
+  trackBtnText: { color: COLORS.orange, fontWeight: '700', fontSize: 13 },
+  trackArrow: { color: COLORS.orange, fontWeight: '700', fontSize: 14 },
+
+  emptyBox: { alignItems: 'center', paddingTop: 60, gap: 12, paddingHorizontal: 32 },
+  emptyIconBox: {
+    width: 100,
+    height: 100,
+    borderRadius: 30,
+    backgroundColor: COLORS.orangeLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyEmoji: { fontSize: 48 },
   emptyTitle: { color: COLORS.text, fontSize: 20, fontWeight: '800' },
-  emptyDesc: { color: COLORS.muted, fontSize: 14, textAlign: 'center' },
+  emptyDesc: { color: COLORS.muted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });
 
 export default OrdersScreen;

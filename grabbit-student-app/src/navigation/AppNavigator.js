@@ -16,24 +16,25 @@ import { COLORS } from '../utils/theme';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TabIcon = ({ emoji, label, focused }) => (
+const TabIcon = ({ icon, focused }) => (
   <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
-    <Text style={tabStyles.emoji}>{emoji}</Text>
+    <Text style={[tabStyles.iconText, !focused && tabStyles.iconInactive]}>{icon}</Text>
   </View>
 );
 
 const tabStyles = StyleSheet.create({
   iconWrap: {
-    width: 42,
-    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   iconWrapActive: {
     backgroundColor: COLORS.orangeLight,
   },
-  emoji: { fontSize: 20 },
+  iconText: { fontSize: 22 },
+  iconInactive: { opacity: 0.4 },
 });
 
 const HomeTabs = () => (
@@ -65,7 +66,7 @@ const HomeTabs = () => (
       name="Home"
       component={HomeScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />,
         tabBarLabel: 'Explore',
       }}
     />
@@ -73,7 +74,7 @@ const HomeTabs = () => (
       name="Orders"
       component={OrdersScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon="📋" focused={focused} />,
         tabBarLabel: 'Orders',
       }}
     />
