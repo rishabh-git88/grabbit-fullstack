@@ -1,40 +1,27 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'https://grabbit-fullstack.onrender.com';
+const SOCKET_URL = 'https://grabbit-fullstack.onrender.com';
 
-export const useSocket = (cafeId, onNewOrder) => {
+export const useSocket = (cafeId, onNewOrder, onOrderUpdate) => {
   const socketRef = useRef(null);
-  const onNewOrderRef = useRef(onNewOrder);
-
-  useEffect(() => {
-    onNewOrderRef.current = onNewOrder;
-  }, [onNewOrder]);
-
-  const stableHandler = useCallback((data) => {
-    if (onNewOrderRef.current) onNewOrderRef.current(data.order);
-  }, []);
 
   useEffect(() => {
     if (!cafeId) return;
 
-    socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
-
-    socketRef.current.on('connect', () => {
-      console.log('Socket connected:', socketRef.current.id);
-      socketRef.current.emit('join_cafe_room', cafeId);
+    socketRef.current = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
     });
 
-    socketRef.current.on('new_order', stableHandler);
+    socketRef.current.emit('join_cafe', cafeId);
 
-    socketRef.current.on('disconnect', () => {
-      console.log('Socket disconnected');
-    });
+    socketRef.current.on('new_order', onNewOrder);
+    socketRef.current.on('order_updated', onOrderUpdate);
 
     return () => {
-      socketRef.current?.disconnect();
+      if (socketRef.current) socketRef.current.disconnect();
     };
-  }, [cafeId, stableHandler]);
-
-  return socketRef.current;
+  }, [cafeId]);
 };
+
+export default useSocket;
