@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'https://grabbit-fullstack.onrender.com';
 
 export const useSocket = (cafeId, onNewOrder) => {
   const socketRef = useRef(null);
