@@ -22,7 +22,8 @@ const io = new Server(server, {
     origin: [
       process.env.VENDOR_DASHBOARD_URL || 'http://localhost:3000',
       process.env.STUDENT_APP_URL || 'http://localhost:3001',
-      'http://localhost:8081', // React Native Metro bundler
+      'http://localhost:8081',
+    'https://grabbit-fullstack.vercel.app', // React Native Metro bundler
     ],
     methods: ['GET', 'POST'],
   },
@@ -37,6 +38,7 @@ app.use(cors({
     process.env.VENDOR_DASHBOARD_URL || 'http://localhost:3000',
     process.env.STUDENT_APP_URL || 'http://localhost:3001',
     'http://localhost:8081',
+    'https://grabbit-fullstack.vercel.app',
   ],
   credentials: true,
 }));
