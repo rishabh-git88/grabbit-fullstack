@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   auth,
   googleProvider,
@@ -12,73 +12,90 @@ import { authAPI } from '../api';
 import toast from 'react-hot-toast';
 
 export default function Login() {
-  const [mode, setMode] = useState('google'); // 'google' | 'phone'
+  const [mode, setMode] = useState('google');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState(1);
   const [confirmResult, setConfirmResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+  const recaptchaRef = useRef(null);
 
   useEffect(() => {
-    return () => {
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier = null;
-      }
-    };
+    if (user) navigate('/', { replace: true });
+  }, [user, navigate]);
+
+  const clearRecaptcha = () => {
+    if (recaptchaRef.current) {
+      recaptchaRef.current.clear();
+      recaptchaRef.current = null;
+    }
+    // Clear the DOM element
+    const container = document.getElementById('recaptcha-container');
+    if (container) container.innerHTML = '';
+  };
+
+  const handleModeSwitch = (newMode) => {
+    clearRecaptcha();
+    setMode(newMode);
+    setStep(1);
+    setOtp('');
+    setPhone('');
+  };
+
+  useEffect(() => {
+    return () => clearRecaptcha();
   }, []);
 
-  // Google Login
+  const handleFirebaseLogin = async (firebaseToken) => {
+    try {
+      const res = await authAPI.firebaseLogin({ firebaseToken });
+      if (res.data.success) {
+        await login(res.data.user, res.data.token);
+        toast.success(`Welcome ${res.data.user.name}!`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Login failed. Contact admin.');
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseToken = await result.user.getIdToken();
-      const res = await authAPI.firebaseLogin({ firebaseToken });
-      if (res.data.success) {
-        login(res.data.user, res.data.token);
-        toast.success(`Welcome ${res.data.user.name}!`);
-        navigate('/');
-      }
+      await handleFirebaseLogin(firebaseToken);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Google login failed');
+      toast.error('Google login failed');
     }
     setLoading(false);
   };
 
-  // Phone — Send OTP
   const handleSendOTP = async () => {
     if (!phone || phone.length < 10) {
-      toast.error('Enter a valid mobile number');
+      toast.error('Enter a valid 10-digit mobile number');
       return;
     }
     setLoading(true);
     try {
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(
-          auth,
-          'recaptcha-container',
-          { size: 'invisible', callback: () => {} }
-        );
-      }
-      const phoneNumber = phone.startsWith('+') ? phone : `+91${phone}`;
-      const result = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+      clearRecaptcha();
+      recaptchaRef.current = new RecaptchaVerifier(
+        auth, 'recaptcha-container',
+        { size: 'invisible', callback: () => {} }
+      );
+      const phoneNumber = `+91${phone}`;
+      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaRef.current);
       setConfirmResult(result);
       setStep(2);
-      toast.success(`OTP sent to ${phoneNumber}`);
+      toast.success(`OTP sent to +91 ${phone}`);
     } catch (err) {
       toast.error(err.message || 'Failed to send OTP');
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier = null;
-      }
+      clearRecaptcha();
     }
     setLoading(false);
   };
 
-  // Phone — Verify OTP
   const handleVerifyOTP = async () => {
     if (!otp || otp.length !== 6) {
       toast.error('Enter the 6-digit OTP');
@@ -88,14 +105,9 @@ export default function Login() {
     try {
       const result = await confirmResult.confirm(otp);
       const firebaseToken = await result.user.getIdToken();
-      const res = await authAPI.firebaseLogin({ firebaseToken });
-      if (res.data.success) {
-        login(res.data.user, res.data.token);
-        toast.success(`Welcome ${res.data.user.name}!`);
-        navigate('/');
-      }
+      await handleFirebaseLogin(firebaseToken);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid OTP');
+      toast.error('Invalid OTP. Please try again.');
     }
     setLoading(false);
   };
@@ -104,20 +116,14 @@ export default function Login() {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #0f1117 0%, #1a1d2e 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif'
     }}>
       <div style={{
-        background: '#1a1d2e',
-        borderRadius: 20,
-        padding: '40px 36px',
-        width: 420,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        background: '#1a1d2e', borderRadius: 20, padding: '40px 36px',
+        width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
         border: '1px solid #2d3148'
       }}>
-
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
@@ -128,9 +134,7 @@ export default function Login() {
             boxShadow: '0 8px 24px rgba(249,115,22,0.3)'
           }}>🐇</div>
           <h1 style={{ color: '#fff', margin: 0, fontSize: 28, fontWeight: 700 }}>grabbit</h1>
-          <p style={{ color: '#6b7280', margin: '8px 0 0', fontSize: 14 }}>
-            Vendor Dashboard
-          </p>
+          <p style={{ color: '#6b7280', margin: '8px 0 0', fontSize: 14 }}>Vendor Dashboard</p>
         </div>
 
         {/* Tab Toggle */}
@@ -139,25 +143,16 @@ export default function Login() {
           borderRadius: 12, padding: 4, marginBottom: 28,
           border: '1px solid #2d3148'
         }}>
-          {[
-            { key: 'google', label: 'Gmail OTP' },
-            { key: 'phone', label: 'Mobile OTP' }
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => { setMode(tab.key); setStep(1); setOtp(''); setPhone(''); }}
+          {[{ key: 'google', label: '📧 Gmail OTP' }, { key: 'phone', label: '📱 Mobile OTP' }].map((tab) => (
+            <button key={tab.key}
+              onClick={() => handleModeSwitch(tab.key)}
               style={{
-                flex: 1, padding: '10px 0', border: 'none',
-                borderRadius: 9, cursor: 'pointer', fontSize: 14,
-                background: mode === tab.key
-                  ? 'linear-gradient(135deg, #f97316, #ea580c)'
-                  : 'transparent',
+                flex: 1, padding: '10px 0', border: 'none', borderRadius: 9,
+                cursor: 'pointer', fontSize: 14,
+                background: mode === tab.key ? 'linear-gradient(135deg, #f97316, #ea580c)' : 'transparent',
                 color: mode === tab.key ? '#fff' : '#6b7280',
-                fontWeight: mode === tab.key ? 600 : 400,
-                transition: 'all 0.2s'
-              }}>
-              {tab.key === 'google' ? '📧 ' : '📱 '}{tab.label}
-            </button>
+                fontWeight: mode === tab.key ? 600 : 400, transition: 'all 0.2s'
+              }}>{tab.label}</button>
           ))}
         </div>
 
@@ -165,23 +160,19 @@ export default function Login() {
         {mode === 'google' && (
           <div>
             <p style={{ color: '#9ca3af', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
-              Sign in with your Google account. An OTP will be sent to verify your identity.
+              Sign in with your registered Google account to access the vendor dashboard.
             </p>
-            <button
-              onClick={handleGoogleLogin}
-              disabled={loading}
+            <button onClick={handleGoogleLogin} disabled={loading}
               style={{
                 width: '100%', padding: '14px 0', borderRadius: 12,
                 background: loading ? '#374151' : '#fff',
-                border: 'none', color: '#1a1a1a',
-                fontSize: 16, fontWeight: 600, cursor: 'pointer',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: 12,
-                transition: 'all 0.2s',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                border: 'none', color: '#1a1a1a', fontSize: 16, fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)', transition: 'all 0.2s'
               }}>
               {loading ? (
-                <span style={{ color: '#fff' }}>Signing in...</span>
+                <span style={{ color: '#6b7280' }}>Signing in...</span>
               ) : (
                 <>
                   <svg width="20" height="20" viewBox="0 0 48 48">
@@ -209,36 +200,25 @@ export default function Login() {
                   <div style={{
                     padding: '12px 16px', background: '#0f1117',
                     border: '1px solid #374151', borderRadius: 10,
-                    color: '#fff', fontSize: 15, minWidth: 60
+                    color: '#fff', fontSize: 15
                   }}>+91</div>
-                  <input
-                    type="tel"
-                    value={phone}
+                  <input type="tel" value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="98765 43210"
                     style={{
                       flex: 1, padding: '12px 16px', borderRadius: 10,
                       background: '#0f1117', border: '1px solid #374151',
-                      color: '#fff', fontSize: 15, outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
+                      color: '#fff', fontSize: 15, outline: 'none', boxSizing: 'border-box'
+                    }} />
                 </div>
-
                 <div id="recaptcha-container"></div>
-
-                <button
-                  onClick={handleSendOTP}
-                  disabled={loading}
+                <button onClick={handleSendOTP} disabled={loading}
                   style={{
                     width: '100%', padding: '14px 0', borderRadius: 12,
-                    background: loading
-                      ? '#374151'
-                      : 'linear-gradient(135deg, #f97316, #ea580c)',
-                    border: 'none', color: '#fff',
-                    fontSize: 16, fontWeight: 600, cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(249,115,22,0.3)',
-                    transition: 'all 0.2s'
+                    background: loading ? '#374151' : 'linear-gradient(135deg, #f97316, #ea580c)',
+                    border: 'none', color: '#fff', fontSize: 16, fontWeight: 600,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(249,115,22,0.3)'
                   }}>
                   {loading ? 'Sending OTP...' : 'Send OTP →'}
                 </button>
@@ -253,44 +233,32 @@ export default function Login() {
                 <label style={{ color: '#9ca3af', fontSize: 12, display: 'block', marginBottom: 8 }}>
                   ENTER 6-DIGIT OTP
                 </label>
-                <input
-                  type="text"
-                  value={otp}
+                <input type="text" value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="• • • • • •"
-                  maxLength={6}
+                  placeholder="• • • • • •" maxLength={6}
                   style={{
                     width: '100%', padding: '16px', borderRadius: 10,
                     background: '#0f1117', border: '1px solid #374151',
                     color: '#fff', fontSize: 24, textAlign: 'center',
                     letterSpacing: 12, outline: 'none',
                     boxSizing: 'border-box', marginBottom: 20
-                  }}
-                />
-                <button
-                  onClick={handleVerifyOTP}
-                  disabled={loading}
+                  }} />
+                <button onClick={handleVerifyOTP} disabled={loading}
                   style={{
                     width: '100%', padding: '14px 0', borderRadius: 12,
-                    background: loading
-                      ? '#374151'
-                      : 'linear-gradient(135deg, #f97316, #ea580c)',
-                    border: 'none', color: '#fff',
-                    fontSize: 16, fontWeight: 600, cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(249,115,22,0.3)',
-                    marginBottom: 12, transition: 'all 0.2s'
+                    background: loading ? '#374151' : 'linear-gradient(135deg, #f97316, #ea580c)',
+                    border: 'none', color: '#fff', fontSize: 16, fontWeight: 600,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(249,115,22,0.3)', marginBottom: 12
                   }}>
                   {loading ? 'Verifying...' : 'Verify OTP ✓'}
                 </button>
-                <button
-                  onClick={() => { setStep(1); setOtp(''); }}
+                <button onClick={() => { setStep(1); setOtp(''); clearRecaptcha(); }}
                   style={{
                     width: '100%', padding: '12px 0', borderRadius: 12,
                     background: 'transparent', border: '1px solid #374151',
                     color: '#6b7280', fontSize: 14, cursor: 'pointer'
-                  }}>
-                  ← Change Number
-                </button>
+                  }}>← Change Number</button>
               </>
             )}
           </div>
