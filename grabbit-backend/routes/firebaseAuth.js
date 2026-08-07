@@ -4,7 +4,6 @@ const admin = require('firebase-admin');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Initialize Firebase Admin
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -26,10 +25,11 @@ router.post('/firebase-login', async (req, res) => {
     const email = decoded.email;
     const phone = decoded.phone_number;
 
-    // Find vendor by email or phone
+    // Find vendor by email, googleEmail or phone
     const user = await User.findOne({
       $or: [
         { email: email },
+        { googleEmail: email },
         { phone: phone }
       ],
       role: 'vendor'
