@@ -12,6 +12,7 @@ const cafeRoutes = require('./routes/cafe');
 const menuRoutes = require('./routes/menu');
 const orderRoutes = require('./routes/order');
 const paymentRoutes = require('./routes/payment');
+const firebaseAuthRoutes = require('./routes/firebaseAuth');
 
 const app = express();
 const server = http.createServer(app);
@@ -59,6 +60,7 @@ app.use('/api/cafes', cafeRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/auth', firebaseAuthRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
