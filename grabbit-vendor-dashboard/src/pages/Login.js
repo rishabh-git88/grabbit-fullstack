@@ -18,6 +18,7 @@ export default function Login() {
   const [step, setStep] = useState(1);
   const [confirmResult, setConfirmResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [recaptchaSolved, setRecaptchaSolved] = useState(false);
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const recaptchaRef = useRef(null);
@@ -31,9 +32,9 @@ export default function Login() {
       recaptchaRef.current.clear();
       recaptchaRef.current = null;
     }
-    // Clear the DOM element
     const container = document.getElementById('recaptcha-container');
     if (container) container.innerHTML = '';
+    setRecaptchaSolved(false);
   };
 
   const handleModeSwitch = (newMode) => {
@@ -43,6 +44,33 @@ export default function Login() {
     setOtp('');
     setPhone('');
   };
+
+  useEffect(() => {
+    if (mode === 'phone' && step === 1) {
+      setTimeout(() => {
+        try {
+          clearRecaptcha();
+          recaptchaRef.current = new RecaptchaVerifier(
+            auth,
+            'recaptcha-container',
+            {
+              size: 'normal',
+              callback: () => {
+                setRecaptchaSolved(true);
+              },
+              'expired-callback': () => {
+                setRecaptchaSolved(false);
+              }
+            }
+          );
+          recaptchaRef.current.render();
+        } catch (err) {
+          console.log('Recaptcha init error:', err);
+        }
+      }, 500);
+    }
+    return () => {};
+  }, [mode, step]);
 
   useEffect(() => {
     return () => clearRecaptcha();
@@ -77,13 +105,12 @@ export default function Login() {
       toast.error('Enter a valid 10-digit mobile number');
       return;
     }
+    if (!recaptchaSolved) {
+      toast.error('Please complete the reCAPTCHA first');
+      return;
+    }
     setLoading(true);
     try {
-      clearRecaptcha();
-      recaptchaRef.current = new RecaptchaVerifier(
-        auth, 'recaptcha-container',
-        { size: 'invisible', callback: () => {} }
-      );
       const phoneNumber = `+91${phone}`;
       const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaRef.current);
       setConfirmResult(result);
@@ -196,7 +223,7 @@ export default function Login() {
                 <label style={{ color: '#9ca3af', fontSize: 12, display: 'block', marginBottom: 8 }}>
                   MOBILE NUMBER
                 </label>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                   <div style={{
                     padding: '12px 16px', background: '#0f1117',
                     border: '1px solid #374151', borderRadius: 10,
@@ -211,16 +238,22 @@ export default function Login() {
                       color: '#fff', fontSize: 15, outline: 'none', boxSizing: 'border-box'
                     }} />
                 </div>
-                <div id="recaptcha-container"></div>
-                <button onClick={handleSendOTP} disabled={loading}
+
+                {/* Visible reCAPTCHA */}
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+                  <div id="recaptcha-container"></div>
+                </div>
+
+                <button onClick={handleSendOTP}
+                  disabled={loading || !recaptchaSolved}
                   style={{
                     width: '100%', padding: '14px 0', borderRadius: 12,
-                    background: loading ? '#374151' : 'linear-gradient(135deg, #f97316, #ea580c)',
+                    background: (!recaptchaSolved || loading) ? '#374151' : 'linear-gradient(135deg, #f97316, #ea580c)',
                     border: 'none', color: '#fff', fontSize: 16, fontWeight: 600,
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(249,115,22,0.3)'
+                    cursor: (!recaptchaSolved || loading) ? 'not-allowed' : 'pointer',
+                    boxShadow: recaptchaSolved ? '0 4px 12px rgba(249,115,22,0.3)' : 'none'
                   }}>
-                  {loading ? 'Sending OTP...' : 'Send OTP →'}
+                  {loading ? 'Sending OTP...' : recaptchaSolved ? 'Send OTP →' : 'Complete reCAPTCHA first'}
                 </button>
               </>
             )}
