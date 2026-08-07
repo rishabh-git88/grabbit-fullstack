@@ -16,8 +16,21 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
-    const res = await authAPI.login({ email, password });
+  // Traditional email/password login
+  const login = async (emailOrUser, passwordOrToken) => {
+    // Firebase login — user object and token passed directly
+    if (typeof emailOrUser === 'object') {
+      const user = emailOrUser;
+      const token = passwordOrToken;
+      if (user.role !== 'vendor') throw new Error('Access denied. Vendor account required.');
+      localStorage.setItem('grabbit_token', token);
+      localStorage.setItem('grabbit_user', JSON.stringify(user));
+      setUser(user);
+      return user;
+    }
+
+    // Traditional login — email and password
+    const res = await authAPI.login({ email: emailOrUser, password: passwordOrToken });
     const { token, user } = res.data;
     if (user.role !== 'vendor') throw new Error('Access denied. Vendor account required.');
     localStorage.setItem('grabbit_token', token);
