@@ -32,7 +32,7 @@ router.post('/firebase-login', async (req, res) => {
         { googleEmail: email },
         { phone: phone }
       ],
-      role: 'vendor'
+      role: { $in: ["vendor", "student"] }
     });
 
     if (!user) {
