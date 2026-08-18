@@ -4,6 +4,7 @@ const { cert, getApps, initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { buildFirebaseStudent } = require('../utils/firebaseUser');
 
 if (!getApps().length) {
   initializeApp({
@@ -26,20 +27,24 @@ router.post('/firebase-login', async (req, res) => {
     const email = decoded.email;
     const phone = decoded.phone_number;
 
-    // Firebase identities can only be linked to accounts that already exist.
-    const user = await User.findOne({
+    const userQuery = {
       $or: [
         { firebaseUid: decoded.uid },
         { email: email },
         { phone: phone }
       ].filter((condition) => Object.values(condition)[0])
-    });
+    };
+    let user = await User.findOne(userQuery);
 
     if (!user) {
-      return res.status(403).json({
-        success: false,
-        message: 'No account found. Register first or contact an administrator.'
-      });
+      try {
+        user = await User.create(buildFirebaseStudent(decoded));
+      } catch (error) {
+        // A concurrent first login can race on one of the unique identity fields.
+        if (error?.code !== 11000) throw error;
+        user = await User.findOne(userQuery);
+        if (!user) throw error;
+      }
     }
 
     if (user.firebaseUid && user.firebaseUid !== decoded.uid) {
