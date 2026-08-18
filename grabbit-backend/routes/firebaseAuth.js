@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const admin = require('firebase-admin');
+const { cert, getApps, initializeApp } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
@@ -21,7 +22,7 @@ router.post('/firebase-login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Firebase token required' });
     }
 
-    const decoded = await admin.auth().verifyIdToken(firebaseToken);
+    const decoded = await getAuth().verifyIdToken(firebaseToken);
     const email = decoded.email;
     const phone = decoded.phone_number;
 
