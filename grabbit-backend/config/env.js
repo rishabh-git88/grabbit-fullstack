@@ -1,4 +1,5 @@
 const splitOrigins = (value = '') => value.split(',').map((origin) => origin.trim()).filter(Boolean);
+const getRazorpayMode = () => (process.env.RAZORPAY_MODE || 'live').toLowerCase();
 
 const required = [
   'MONGO_URI',
@@ -18,14 +19,20 @@ const getAllowedOrigins = () => [
 
 const validateEnvironment = () => {
   const missing = required.filter((name) => !process.env[name]);
+  const razorpayMode = getRazorpayMode();
   if (process.env.NODE_ENV === 'production') {
     ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'].forEach((name) => {
       if (!process.env[name]) missing.push(name);
     });
-  }
 
-  if (process.env.NODE_ENV === 'production' && process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.startsWith('rzp_live_')) {
-    missing.push('a live RAZORPAY_KEY_ID');
+    if (!['live', 'test'].includes(razorpayMode)) {
+      missing.push('RAZORPAY_MODE (live or test)');
+    } else if (process.env.RAZORPAY_KEY_ID) {
+      const expectedPrefix = razorpayMode === 'test' ? 'rzp_test_' : 'rzp_live_';
+      if (!process.env.RAZORPAY_KEY_ID.startsWith(expectedPrefix)) {
+        missing.push(`a ${razorpayMode} RAZORPAY_KEY_ID`);
+      }
+    }
   }
 
   if (missing.length) {
@@ -38,4 +45,4 @@ const isAllowedOrigin = (origin, callback) => {
   return callback(new Error('Origin is not allowed by CORS'));
 };
 
-module.exports = { getAllowedOrigins, isAllowedOrigin, validateEnvironment };
+module.exports = { getAllowedOrigins, getRazorpayMode, isAllowedOrigin, validateEnvironment };
