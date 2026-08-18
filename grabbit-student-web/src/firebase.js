@@ -8,13 +8,17 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCunBxf4I38HrBfjH4LJb1s3YZkm6hleJc",
-  authDomain: "grabbit-753ff.firebaseapp.com",
-  projectId: "grabbit-753ff",
-  storageBucket: "grabbit-753ff.firebasestorage.app",
-  messagingSenderId: "629550679093",
-  appId: "1:629550679093:web:8e07038a859677a8555d7c"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
+
+if (Object.values(firebaseConfig).some((value) => !value)) {
+  throw new Error('Firebase environment variables are required');
+}
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

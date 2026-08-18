@@ -2,6 +2,33 @@ const crypto = require('crypto');
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 
+const notifyVendor = async (io, orderId) => {
+  if (!io) return;
+
+  const order = await Order.findById(orderId)
+    .populate('userId', 'name email')
+    .populate('cafeId', 'name');
+  if (!order) return;
+
+  io.to(`cafe_${order.cafeId._id}`).emit('new_order', { order });
+};
+
+const markAdvancePaid = async (payment, razorpayPaymentId = '') => {
+  if (payment.status === 'success') return Order.findById(payment.orderId);
+  payment.status = 'success';
+  if (razorpayPaymentId) {
+    payment.razorpayPaymentId = razorpayPaymentId;
+    payment.transactionId = razorpayPaymentId;
+  }
+  await payment.save();
+
+  const order = await Order.findById(payment.orderId);
+  if (!order) throw new Error('Order not found');
+  order.paymentStatus = 'partial';
+  await order.save();
+  return order;
+};
+
 // Initialize Razorpay if keys exist
 let razorpay = null;
 try {
@@ -28,10 +55,26 @@ const createPayment = async (req, res) => {
     if (order.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
+    if (order.paymentStatus !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Payment has already been completed for this order' });
+    }
 
     const amountInPaise = Math.round(order.paidAmount * 100); // Razorpay uses paise
 
     if (razorpay) {
+      const existingPayment = await Payment.findOne({ orderId, userId: req.user._id, type: 'advance', status: 'pending' });
+      if (existingPayment?.razorpayOrderId) {
+        return res.json({
+          success: true,
+          razorpayOrderId: existingPayment.razorpayOrderId,
+          razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+          amount: amountInPaise,
+          currency: 'INR',
+          paymentId: existingPayment._id,
+          orderNumber: order.orderNumber,
+        });
+      }
+
       // Real Razorpay payment
       const razorpayOrder = await razorpay.orders.create({
         amount: amountInPaise,
@@ -60,7 +103,11 @@ const createPayment = async (req, res) => {
         orderNumber: order.orderNumber,
       });
     } else {
-      // Simulated payment for development/demo
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(503).json({ success: false, message: 'Payments are not configured' });
+      }
+
+      // Simulated payment is available only in local development.
       const simulatedTransactionId = `SIM_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
       const payment = await Payment.create({
@@ -73,8 +120,8 @@ const createPayment = async (req, res) => {
         type: 'advance',
       });
 
-      order.paymentStatus = 'partial';
-      await order.save();
+      await markAdvancePaid(payment);
+      await notifyVendor(req.app.get('io'), order._id);
 
       return res.json({
         success: true,
@@ -87,7 +134,8 @@ const createPayment = async (req, res) => {
       });
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(JSON.stringify({ event: 'payment_create_failed', message: error.message }));
+    res.status(500).json({ success: false, message: 'Unable to create payment' });
   }
 };
 
@@ -111,20 +159,22 @@ const verifyPayment = async (req, res) => {
 
     const payment = await Payment.findById(paymentId);
     if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    if (payment.userId.toString() !== req.user._id.toString() || payment.razorpayOrderId !== razorpayOrderId) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    if (payment.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Payment has already been verified' });
+    }
 
-    payment.status = 'success';
-    payment.razorpayPaymentId = razorpayPaymentId;
     payment.razorpaySignature = razorpaySignature;
-    payment.transactionId = razorpayPaymentId;
     await payment.save();
-
-    const order = await Order.findById(payment.orderId);
-    order.paymentStatus = 'partial';
-    await order.save();
+    const order = await markAdvancePaid(payment, razorpayPaymentId);
+    await notifyVendor(req.app.get('io'), order._id);
 
     res.json({ success: true, message: 'Payment verified successfully', payment });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(JSON.stringify({ event: 'payment_verify_failed', message: error.message }));
+    res.status(500).json({ success: false, message: 'Unable to verify payment' });
   }
 };
 
@@ -139,8 +189,73 @@ const getPaymentHistory = async (req, res) => {
 
     res.json({ success: true, payments });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to fetch payment history' });
   }
 };
 
-module.exports = { createPayment, verifyPayment, getPaymentHistory };
+// @desc    Mark the collection-at-pickup payment as received
+// @route   POST /api/payment/:orderId/collect-remaining
+// @access  Private (Vendor)
+const collectRemainingPayment = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.orderId).populate('cafeId', 'vendorId');
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.cafeId.vendorId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    if (order.status !== 'ready' || order.paymentStatus !== 'partial') {
+      return res.status(400).json({ success: false, message: 'This order is not ready for remaining-payment collection' });
+    }
+
+    const existing = await Payment.findOne({ orderId: order._id, type: 'remaining', status: 'success' });
+    if (!existing) {
+      await Payment.create({
+        orderId: order._id,
+        userId: order.userId,
+        amount: order.remainingAmount,
+        method: 'cash',
+        status: 'success',
+        transactionId: `CASH_${order._id}`,
+        type: 'remaining',
+      });
+    }
+    order.paymentStatus = 'full';
+    await order.save();
+    return res.json({ success: true, message: 'Remaining payment recorded', order });
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'remaining_payment_failed', message: error.message }));
+    return res.status(500).json({ success: false, message: 'Unable to collect remaining payment' });
+  }
+};
+
+// Razorpay sends the source-of-truth capture event. The raw request body is supplied by server.js.
+const paymentWebhook = async (req, res) => {
+  try {
+    const signature = req.headers['x-razorpay-signature'];
+    const expected = crypto.createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET).update(req.body).digest('hex');
+    if (!signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
+    }
+
+    const event = JSON.parse(req.body.toString('utf8'));
+    const paymentEntity = event.payload?.payment?.entity;
+    if (!paymentEntity?.order_id) return res.status(200).json({ success: true });
+
+    const payment = await Payment.findOne({ razorpayOrderId: paymentEntity.order_id, type: 'advance' });
+    if (!payment) return res.status(200).json({ success: true });
+
+    if (event.event === 'payment.captured') {
+      const order = await markAdvancePaid(payment, paymentEntity.id);
+      await notifyVendor(req.app.get('io'), order._id);
+    } else if (event.event === 'payment.failed' && payment.status === 'pending') {
+      payment.status = 'failed';
+      await payment.save();
+    }
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'razorpay_webhook_failed', message: error.message }));
+    return res.status(500).json({ success: false, message: 'Webhook processing failed' });
+  }
+};
+
+module.exports = { createPayment, verifyPayment, getPaymentHistory, collectRemainingPayment, paymentWebhook };

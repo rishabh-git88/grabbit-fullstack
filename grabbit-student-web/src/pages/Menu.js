@@ -10,13 +10,13 @@ export default function Menu() {
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('All');
-  const { addItem, items, itemCount } = useCart();
+  const { addItem, removeItem, items, itemCount } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
     cafeAPI.getMenu(cafeId).then(res => {
       setCafe(res.data.cafe);
-      setMenu(res.data.menuItems || []);
+      setMenu(res.data.menu || []);
       setLoading(false);
     }).catch(() => { toast.error('Failed to load menu'); setLoading(false); });
   }, [cafeId]);
@@ -64,7 +64,7 @@ export default function Menu() {
                   {item.isAvailable ? (
                     getQty(item._id) > 0 ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button onClick={() => { }} style={{ width: 28, height: 28, borderRadius: '50%', background: '#374151', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16 }}>-</button>
+                        <button onClick={() => removeItem(item._id)} style={{ width: 28, height: 28, borderRadius: '50%', background: '#374151', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16 }}>-</button>
                         <span style={{ color: '#fff', fontWeight: 600 }}>{getQty(item._id)}</span>
                         <button onClick={() => addItem(item, cafe)} style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16 }}>+</button>
                       </div>

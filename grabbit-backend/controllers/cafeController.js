@@ -6,10 +6,10 @@ const MenuItem = require('../models/MenuItem');
 // @access  Public
 const getCafes = async (req, res) => {
   try {
-    const cafes = await Cafe.find().populate('vendorId', 'name email');
+    const cafes = await Cafe.find().populate('vendorId', 'name');
     res.json({ success: true, count: cafes.length, cafes });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to fetch cafes' });
   }
 };
 
@@ -18,11 +18,11 @@ const getCafes = async (req, res) => {
 // @access  Public
 const getCafe = async (req, res) => {
   try {
-    const cafe = await Cafe.findById(req.params.id).populate('vendorId', 'name email');
+    const cafe = await Cafe.findById(req.params.id).populate('vendorId', 'name');
     if (!cafe) return res.status(404).json({ success: false, message: 'Cafe not found' });
     res.json({ success: true, cafe });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to fetch cafe' });
   }
 };
 
@@ -34,10 +34,10 @@ const getCafeMenu = async (req, res) => {
     const cafe = await Cafe.findById(req.params.id);
     if (!cafe) return res.status(404).json({ success: false, message: 'Cafe not found' });
 
-    const menu = await MenuItem.find({ cafeId: req.params.id }).sort('category');
+    const menu = await MenuItem.find({ cafeId: req.params.id, isAvailable: true }).sort('category');
     res.json({ success: true, cafe, menu });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to fetch menu' });
   }
 };
 
@@ -59,7 +59,7 @@ const updateCafeStatus = async (req, res) => {
 
     res.json({ success: true, message: `Cafe is now ${isOpen ? 'open' : 'closed'}`, cafe });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to update cafe status' });
   }
 };
 

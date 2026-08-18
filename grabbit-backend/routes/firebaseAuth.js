@@ -25,21 +25,30 @@ router.post('/firebase-login', async (req, res) => {
     const email = decoded.email;
     const phone = decoded.phone_number;
 
-    // Find vendor by email, googleEmail or phone
+    // Firebase identities can only be linked to accounts that already exist.
     const user = await User.findOne({
       $or: [
+        { firebaseUid: decoded.uid },
         { email: email },
-        { googleEmail: email },
         { phone: phone }
-      ],
-      role: { $in: ["vendor", "student"] }
+      ].filter((condition) => Object.values(condition)[0])
     });
 
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: 'No vendor account found. Contact admin to register.'
+        message: 'No account found. Register first or contact an administrator.'
       });
+    }
+
+    if (user.firebaseUid && user.firebaseUid !== decoded.uid) {
+      return res.status(403).json({ success: false, message: 'This account is linked to another sign-in method' });
+    }
+
+    if (!user.firebaseUid) {
+      user.firebaseUid = decoded.uid;
+      if (!user.phone && phone) user.phone = phone;
+      await user.save();
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
@@ -59,7 +68,7 @@ router.post('/firebase-login', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Firebase login error:', err);
+    console.error(JSON.stringify({ event: 'firebase_login_failed', message: err.message }));
     res.status(401).json({ success: false, message: 'Invalid Firebase token' });
   }
 });

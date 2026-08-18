@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { randomUUID } = require('crypto');
 
 const orderItemSchema = new mongoose.Schema({
   itemId: {
@@ -62,13 +63,14 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-generate order number before save
-orderSchema.pre('save', async function (next) {
+orderSchema.pre('save', function (next) {
   if (!this.orderNumber) {
-    const count = await mongoose.model('Order').countDocuments();
-    this.orderNumber = `GRB${String(count + 1).padStart(4, '0')}`;
+    this.orderNumber = `GRB-${randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
   }
   next();
 });
+
+orderSchema.index({ userId: 1, createdAt: -1 });
+orderSchema.index({ cafeId: 1, paymentStatus: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

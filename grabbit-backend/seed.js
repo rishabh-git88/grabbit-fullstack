@@ -7,7 +7,8 @@ const Cafe = require('./models/Cafe');
 const MenuItem = require('./models/MenuItem');
 
 const seed = async () => {
-  await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/grabbit');
+  if (!process.env.MONGO_URI) throw new Error('MONGO_URI is required');
+  await mongoose.connect(process.env.MONGO_URI);
   console.log('Connected to MongoDB');
 
   // Clear existing data

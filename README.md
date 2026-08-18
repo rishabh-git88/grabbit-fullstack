@@ -20,7 +20,7 @@ grabbit/
 
 ### Prerequisites
 
-- Node.js v18+
+- Node.js 20.x
 - MongoDB (local or Atlas)
 - npm or yarn
 - For mobile: Android Studio / Xcode + React Native CLI
@@ -35,7 +35,7 @@ npm install
 
 # Copy and configure environment
 cp .env.example .env
-# Edit .env — set MONGO_URI and JWT_SECRET at minimum
+# Edit .env — set every required value listed in .env.example
 
 # Seed demo data (optional but recommended)
 node seed.js
@@ -63,13 +63,14 @@ The API will be running at **http://localhost:5000**
 cd grabbit-vendor-dashboard
 npm install
 
-# Start the app
+# Copy and configure environment values, then start the app
+cp .env.example .env
 npm start
 ```
 
 Open **http://localhost:3000** in your browser.
 
-> **Note:** The dashboard uses CRA's proxy to forward `/api` calls to `http://localhost:5000`. No `.env` needed for local dev.
+Set `REACT_APP_API_URL`, `REACT_APP_SOCKET_URL`, and the Firebase web variables from `.env.example`. No production URL is embedded in the dashboard.
 
 ### Vendor Dashboard Features
 - ✅ Secure login (vendor-only)
@@ -107,20 +108,14 @@ npm run ios
 
 ### ⚠️ API URL Configuration
 
-Edit `src/api/index.js`:
+Copy `.env.example` to `.env` and configure it:
 
-```js
-// Android Emulator
-const API_BASE = 'http://10.0.2.2:5000/api';
-
-// iOS Simulator
-// const API_BASE = 'http://localhost:5000/api';
-
-// Physical Device (replace with your machine's LAN IP)
-// const API_BASE = 'http://192.168.x.x:5000/api';
+```env
+EXPO_PUBLIC_API_URL=https://your-backend.example.com/api
+EXPO_PUBLIC_SOCKET_URL=https://your-backend.example.com
 ```
 
-Do the same in `src/hooks/useOrderSocket.js` for Socket.io.
+Use a development backend URL in local `.env`, never in source code.
 
 ### Student App Features
 - ✅ Login / Register
@@ -139,7 +134,7 @@ Do the same in `src/hooks/useOrderSocket.js` for Socket.io.
 ### Auth
 | Method | Endpoint              | Body                              | Access  |
 |--------|-----------------------|-----------------------------------|---------|
-| POST   | /api/auth/register    | name, email, password, role       | Public  |
+| POST   | /api/auth/register    | name, email, password             | Public (student) |
 | POST   | /api/auth/login       | email, password                   | Public  |
 | GET    | /api/auth/me          | —                                 | Private |
 
@@ -173,21 +168,24 @@ Do the same in `src/hooks/useOrderSocket.js` for Socket.io.
 |--------|------------------------|----------------------------|
 | POST   | /api/payment/create    | Create Razorpay order      |
 | POST   | /api/payment/verify    | Verify Razorpay signature  |
+| POST   | /api/payment/:orderId/collect-remaining | Record pickup payment (vendor) |
+| POST   | /api/payment/webhook   | Razorpay payment event     |
 | GET    | /api/payment/history   | Payment history            |
 
 ---
 
 ## 💳 Payment Integration
 
-### Simulated Payments (Default)
-Without Razorpay credentials, payments are simulated automatically — perfect for development.
+### Simulated Payments (Development Only)
+Without Razorpay credentials, payments are simulated only outside production. Production refuses payment creation until live Razorpay credentials and a webhook secret are configured.
 
 ### Real Razorpay Integration
-1. Sign up at [razorpay.com](https://razorpay.com) and get test keys
+1. Configure live Razorpay credentials and `RAZORPAY_WEBHOOK_SECRET` in Render.
 2. Add to `grabbit-backend/.env`:
    ```
-   RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
-   RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxx
+   RAZORPAY_KEY_ID=rzp_live_...
+   RAZORPAY_KEY_SECRET=...
+   RAZORPAY_WEBHOOK_SECRET=...
    ```
 3. For the mobile app, integrate [`react-native-razorpay`](https://github.com/razorpay/react-native-razorpay):
    ```bash
@@ -222,8 +220,9 @@ Without Razorpay credentials, payments are simulated automatically — perfect f
 | `order_status_update`| `user_<id>`   | orderId, status, cafeName        |
 
 ### Client subscriptions:
-- **Vendor:** emits `join_cafe_room` with cafeId on connect
-- **Student:** emits `join_user_room` with userId on connect
+- **Vendor:** sends its JWT during the Socket.IO handshake, then emits `join_cafe_room`.
+- **Student:** sends its JWT during the Socket.IO handshake, then emits `join_user_room`.
+- The server derives the room from the authenticated account; IDs sent by clients are ignored.
 
 ---
 
@@ -388,4 +387,3 @@ grabbit-student-app/
 
 MIT — built for campus use and open learning.
 =======
-

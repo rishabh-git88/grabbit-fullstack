@@ -10,6 +10,10 @@ const placeOrder = async (req, res) => {
   try {
     const { cafeId, items, notes } = req.body;
 
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one item is required' });
+    }
+
     const cafe = await Cafe.findById(cafeId);
     if (!cafe) return res.status(404).json({ success: false, message: 'Cafe not found' });
     if (!cafe.isOpen) return res.status(400).json({ success: false, message: 'Cafe is currently closed' });
@@ -19,12 +23,18 @@ const placeOrder = async (req, res) => {
     const orderItems = [];
 
     for (const item of items) {
+      if (!item?.itemId || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50) {
+        return res.status(400).json({ success: false, message: 'Each item must have a valid quantity' });
+      }
       const menuItem = await MenuItem.findById(item.itemId);
       if (!menuItem) {
         return res.status(404).json({ success: false, message: `Item ${item.itemId} not found` });
       }
       if (!menuItem.isAvailable) {
         return res.status(400).json({ success: false, message: `${menuItem.name} is not available` });
+      }
+      if (menuItem.cafeId.toString() !== cafe._id.toString()) {
+        return res.status(400).json({ success: false, message: 'All items must belong to the selected cafe' });
       }
       const itemTotal = menuItem.price * item.quantity;
       totalAmount += itemTotal;
@@ -65,19 +75,13 @@ const placeOrder = async (req, res) => {
     order.qrCode = qrCode;
     await order.save();
 
-    // Emit to cafe vendor via socket
-    const io = req.app.get('io');
-    io.to(`cafe_${cafeId}`).emit('new_order', {
-      order: await Order.findById(order._id).populate('userId', 'name email').populate('cafeId', 'name'),
-    });
-
     res.status(201).json({
       success: true,
       message: 'Order placed successfully',
       order,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to place order' });
   }
 };
 
@@ -86,7 +90,7 @@ const placeOrder = async (req, res) => {
 // @access  Private (Student)
 const getUserOrders = async (req, res) => {
   try {
-    if (req.user._id.toString() !== req.params.userId && req.user.role !== 'vendor') {
+    if (req.user._id.toString() !== req.params.userId) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
@@ -96,7 +100,7 @@ const getUserOrders = async (req, res) => {
 
     res.json({ success: true, count: orders.length, orders });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to fetch orders' });
   }
 };
 
@@ -106,17 +110,19 @@ const getUserOrders = async (req, res) => {
 const getCafeOrders = async (req, res) => {
   try {
     const { status, limit = 50 } = req.query;
-    const query = { cafeId: req.params.cafeId };
+    const cafe = await Cafe.findOne({ _id: req.params.cafeId, vendorId: req.user._id });
+    if (!cafe) return res.status(403).json({ success: false, message: 'Not authorized' });
+    const query = { cafeId: req.params.cafeId, paymentStatus: { $in: ['partial', 'full'] } };
     if (status) query.status = status;
 
     const orders = await Order.find(query)
       .populate('userId', 'name email')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100));
 
     res.json({ success: true, count: orders.length, orders });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to fetch cafe orders' });
   }
 };
 
@@ -134,6 +140,9 @@ const updateOrderStatus = async (req, res) => {
 
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.paymentStatus === 'pending') {
+      return res.status(400).json({ success: false, message: 'Payment must be completed before updating an order' });
+    }
 
     // Verify vendor owns this cafe
     const cafe = await Cafe.findById(order.cafeId);
@@ -141,8 +150,22 @@ const updateOrderStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
+    const transitions = {
+      placed: ['accepted', 'rejected'],
+      accepted: ['preparing', 'rejected'],
+      preparing: ['ready'],
+      ready: ['completed'],
+      completed: [],
+      rejected: [],
+    };
+    if (!transitions[order.status].includes(status)) {
+      return res.status(400).json({ success: false, message: `Cannot move an order from ${order.status} to ${status}` });
+    }
+    if (status === 'completed' && order.paymentStatus !== 'full') {
+      return res.status(400).json({ success: false, message: 'Collect the remaining payment before completing this order' });
+    }
+
     order.status = status;
-    if (status === 'completed') order.paymentStatus = 'full';
     await order.save();
 
     // Emit to student via socket
@@ -156,7 +179,7 @@ const updateOrderStatus = async (req, res) => {
 
     res.json({ success: true, message: `Order status updated to ${status}`, order });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to update order status' });
   }
 };
 
@@ -167,11 +190,14 @@ const getOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('userId', 'name email')
-      .populate('cafeId', 'name location imageUrl');
+      .populate('cafeId', 'name location imageUrl vendorId');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    const isOwner = order.userId._id.toString() === req.user._id.toString();
+    const isVendor = req.user.role === 'vendor' && order.cafeId.vendorId?.toString() === req.user._id.toString();
+    if (!isOwner && !isVendor) return res.status(403).json({ success: false, message: 'Not authorized' });
     res.json({ success: true, order });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to fetch order' });
   }
 };
 

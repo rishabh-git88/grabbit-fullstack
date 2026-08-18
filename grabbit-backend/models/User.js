@@ -31,6 +31,18 @@ const userSchema = new mongoose.Schema(
       ref: 'Cafe',
       default: null, // Only for vendors
     },
+    firebaseUid: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: null,
+    },
+    phone: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: null,
+    },
   },
   { timestamps: true }
 );

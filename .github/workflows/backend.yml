@@ -1,0 +1,28 @@
+name: Backend checks
+
+on:
+  pull_request:
+    paths:
+      - 'grabbit-backend/**'
+      - '.github/workflows/backend.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'grabbit-backend/**'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grabbit-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: grabbit-backend/package-lock.json
+      - run: npm ci
+      - run: npm test

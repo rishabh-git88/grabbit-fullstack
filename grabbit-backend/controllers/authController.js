@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const Cafe = require('../models/Cafe');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -13,26 +12,19 @@ const generateToken = (id) => {
 // @access  Public
 const register = async (req, res) => {
   try {
-    const { name, email, password, role, cafeName, cafeDescription, cafeLocation } = req.body;
+    const { name, email, password, role } = req.body;
+
+    if (role && role !== 'student') {
+      return res.status(403).json({ success: false, message: 'Vendor accounts must be provisioned by an administrator' });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
-    const user = await User.create({ name, email, password, role: role || 'student' });
-
-    // If vendor, create their cafe
-    if (role === 'vendor') {
-      const cafe = await Cafe.create({
-        name: cafeName || `${name}'s Cafe`,
-        description: cafeDescription || '',
-        location: cafeLocation || '',
-        vendorId: user._id,
-      });
-      user.cafeId = cafe._id;
-      await user.save();
-    }
+    // Vendor accounts must be provisioned by an administrator; public registration is student-only.
+    const user = await User.create({ name, email, password, role: 'student' });
 
     const token = generateToken(user._id);
 
@@ -49,7 +41,7 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to register user' });
   }
 };
 
@@ -84,7 +76,7 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to log in' });
   }
 };
 

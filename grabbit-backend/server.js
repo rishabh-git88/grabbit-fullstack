@@ -4,8 +4,14 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 dotenv.config();
+
+const { isAllowedOrigin, validateEnvironment } = require('./config/env');
+
+validateEnvironment();
 
 const authRoutes = require('./routes/auth');
 const cafeRoutes = require('./routes/cafe');
@@ -13,47 +19,35 @@ const menuRoutes = require('./routes/menu');
 const orderRoutes = require('./routes/order');
 const paymentRoutes = require('./routes/payment');
 const firebaseAuthRoutes = require('./routes/firebaseAuth');
+const { paymentWebhook } = require('./controllers/paymentController');
 
 const app = express();
 const server = http.createServer(app);
+app.set('trust proxy', 1);
 
-// Socket.io setup
+const corsOptions = {
+  origin: isAllowedOrigin,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 const io = new Server(server, {
-  cors: {
-    origin: [
-      process.env.VENDOR_DASHBOARD_URL || 'http://localhost:3000',
-      process.env.STUDENT_APP_URL || 'http://localhost:3001',
-      'http://localhost:8081',
-    'https://grabbit-fullstack.vercel.app', // React Native Metro bundler
-    ],
-    methods: ['GET', 'POST'],
-  },
+  cors: corsOptions,
 });
 
 // Make io accessible in routes
 app.set('io', io);
 
-// Middleware
-app.use(cors({
-  origin: [
-    process.env.VENDOR_DASHBOARD_URL || 'http://localhost:3000',
-    process.env.STUDENT_APP_URL || 'http://localhost:3001',
-    'http://localhost:8081',
-    'https://grabbit-fullstack.vercel.app',
-  ],
-  credentials: true,
-}));
-app.use(express.json());
+app.use(helmet());
+app.use(cors(corsOptions));
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
+app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: 'draft-7', legacyHeaders: false }));
+app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), paymentWebhook);
+app.use(express.json({ limit: '100kb' }));
+mongoose.set('sanitizeFilter', true);
 
 // MongoDB Connection
-mongoose
-  .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/grabbit')
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
-
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/cafes', cafeRoutes);
@@ -64,37 +58,79 @@ app.use('/api/auth', firebaseAuthRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Grabbit API is running 🐇' });
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({ status: ready ? 'OK' : 'DEGRADED' });
 });
 
-// Socket.io events
-io.on('connection', (socket) => {
-  console.log(`🔌 Client connected: ${socket.id}`);
+io.use(async (socket, next) => {
+  try {
+    const authHeader = socket.handshake.headers.authorization;
+    const token = socket.handshake.auth?.token || authHeader?.replace(/^Bearer\s+/i, '');
+    if (!token) return next(new Error('Authentication required'));
 
-  // Student joins their personal room
-  socket.on('join_user_room', (userId) => {
-    socket.join(`user_${userId}`);
-    console.log(`Student ${userId} joined their room`);
+    const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+    const User = require('./models/User');
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) return next(new Error('Authentication required'));
+    socket.data.user = user;
+    return next();
+  } catch {
+    return next(new Error('Authentication required'));
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log(JSON.stringify({ event: 'socket_connected', userId: socket.data.user._id.toString() }));
+
+  socket.on('join_user_room', () => {
+    if (socket.data.user.role !== 'student') return;
+    socket.join(`user_${socket.data.user._id}`);
   });
 
-  // Vendor joins their cafe room
-  socket.on('join_cafe_room', (cafeId) => {
-    socket.join(`cafe_${cafeId}`);
-    console.log(`Vendor joined cafe room: ${cafeId}`);
+  socket.on('join_cafe_room', async () => {
+    if (socket.data.user.role !== 'vendor' || !socket.data.user.cafeId) return;
+    const Cafe = require('./models/Cafe');
+    const cafe = await Cafe.findOne({ _id: socket.data.user.cafeId, vendorId: socket.data.user._id });
+    if (cafe) socket.join(`cafe_${cafe._id}`);
   });
 
   socket.on('disconnect', () => {
-    console.log(`🔌 Client disconnected: ${socket.id}`);
+    console.log(JSON.stringify({ event: 'socket_disconnected', userId: socket.data.user?._id?.toString() }));
   });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Grabbit server running on port ${PORT}`);
+app.use((err, req, res, next) => {
+  console.error(JSON.stringify({ event: 'request_error', message: err.message, path: req.path }));
+  const status = err.statusCode || (err.type === 'entity.parse.failed' ? 400 : 500);
+  const message = status >= 500 && process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message;
+  res.status(status).json({ success: false, message });
 });
+
+const startServer = async () => {
+  await mongoose.connect(process.env.MONGO_URI);
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => console.log(JSON.stringify({ event: 'server_started', port: PORT })));
+};
+
+const shutdown = (signal) => async () => {
+  console.log(JSON.stringify({ event: 'shutdown_started', signal }));
+  server.close(async () => {
+    await mongoose.connection.close();
+    process.exit(0);
+  });
+};
+
+if (require.main === module) {
+  startServer().catch((error) => {
+    console.error(JSON.stringify({ event: 'startup_failed', message: error.message }));
+    process.exit(1);
+  });
+  process.once('SIGTERM', shutdown('SIGTERM'));
+  process.once('SIGINT', shutdown('SIGINT'));
+}
+
+module.exports = { app, server, startServer };

@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'https://grabbit-fullstack.onrender.com';
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL;
+
+if (!SOCKET_URL) {
+  throw new Error('REACT_APP_SOCKET_URL is required');
+}
 
 export const useOrderSocket = (userId, onStatusUpdate) => {
   const socketRef = useRef(null);
@@ -11,8 +15,11 @@ export const useOrderSocket = (userId, onStatusUpdate) => {
 
   useEffect(() => {
     if (!userId) return;
-    socketRef.current = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    socketRef.current.emit('join_user_room', userId);
+    socketRef.current = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      auth: { token: localStorage.getItem('grabbit_student_token') },
+    });
+    socketRef.current.on('connect', () => socketRef.current.emit('join_user_room', userId));
     socketRef.current.on('order_status_update', (data) => callbackRef.current(data));
     return () => { if (socketRef.current) socketRef.current.disconnect(); };
   }, [userId]);

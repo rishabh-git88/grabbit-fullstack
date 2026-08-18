@@ -18,7 +18,7 @@ const paymentSchema = new mongoose.Schema(
     },
     method: {
       type: String,
-      enum: ['razorpay', 'upi', 'card', 'netbanking', 'simulated'],
+      enum: ['razorpay', 'upi', 'card', 'netbanking', 'cash', 'simulated'],
       default: 'razorpay',
     },
     status: {
@@ -50,5 +50,7 @@ const paymentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+paymentSchema.index({ orderId: 1, type: 1, status: 1 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

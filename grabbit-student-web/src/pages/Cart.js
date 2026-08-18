@@ -19,25 +19,25 @@ export default function Cart() {
     if (items.length === 0) { toast.error('Cart is empty'); return; }
     setLoading(true);
     try {
-      // Create payment order
-      const payRes = await paymentAPI.create({
-        amount: advance,
+      // Create the internal order before requesting its payment order.
+      const orderRes = await orderAPI.place({
         cafeId,
-        items: items.map(i => ({ itemId: i._id, name: i.name, quantity: i.quantity, price: i.price }))
+        items: items.map(i => ({ itemId: i._id, quantity: i.quantity })),
+        notes,
       });
+      const order = orderRes.data.order;
+      const payRes = await paymentAPI.create({ orderId: order._id });
 
       if (payRes.data.simulated) {
-        // Simulated payment - place order directly
-        const orderRes = await orderAPI.place({
-          cafeId,
-          items: items.map(i => ({ itemId: i._id, name: i.name, quantity: i.quantity, price: i.price })),
-          notes,
-          paymentId: payRes.data.paymentId
-        });
         clearCart();
         toast.success('Order placed successfully!');
-        navigate(`/track/${orderRes.data.order._id}`);
+        navigate(`/track/${order._id}`);
+        setLoading(false);
         return;
+      }
+
+      if (!window.Razorpay) {
+        throw new Error('Razorpay checkout failed to load');
       }
 
       // Real Razorpay payment
@@ -53,14 +53,6 @@ export default function Cart() {
         theme: { color: '#f97316' },
         handler: async (data) => {
           try {
-            const orderRes = await orderAPI.place({
-              cafeId,
-              items: items.map(i => ({ itemId: i._id, name: i.name, quantity: i.quantity, price: i.price })),
-              notes,
-              paymentId: payRes.data.paymentId,
-              razorpayPaymentId: data.razorpay_payment_id,
-              razorpaySignature: data.razorpay_signature
-            });
             await paymentAPI.verify({
               razorpayOrderId: payRes.data.razorpayOrderId,
               razorpayPaymentId: data.razorpay_payment_id,
@@ -69,9 +61,11 @@ export default function Cart() {
             });
             clearCart();
             toast.success('Payment successful! Order placed 🎉');
-            navigate(`/track/${orderRes.data.order._id}`);
+            navigate(`/track/${order._id}`);
           } catch (err) {
             toast.error('Order failed after payment. Contact support.');
+          } finally {
+            setLoading(false);
           }
         },
         modal: { ondismiss: () => { setLoading(false); toast.error('Payment cancelled'); } }
@@ -80,9 +74,9 @@ export default function Cart() {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) {
-      toast.error('Failed to place order');
+      toast.error(err.response?.data?.message || err.message || 'Failed to place order');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (items.length === 0) {

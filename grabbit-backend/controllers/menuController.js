@@ -42,14 +42,18 @@ const updateMenuItem = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    const updated = await MenuItem.findByIdAndUpdate(req.params.id, req.body, {
+    const allowedFields = ['name', 'description', 'price', 'category', 'imageUrl', 'isAvailable', 'preparationTime'];
+    const updates = Object.fromEntries(
+      Object.entries(req.body).filter(([field]) => allowedFields.includes(field))
+    );
+    const updated = await MenuItem.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
     });
 
     res.json({ success: true, message: 'Item updated', item: updated });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Unable to update menu item' });
   }
 };
 

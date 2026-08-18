@@ -29,6 +29,9 @@ const OrderCard = ({ order, onUpdated }) => {
   const handleAction = async (status) => {
     setLoading(true);
     try {
+      if (status === 'completed' && order.paymentStatus !== 'full') {
+        await orderAPI.collectRemainingPayment(order._id);
+      }
       await orderAPI.updateStatus(order._id, status);
       toast.success(`Order ${order.orderNumber} → ${status}`);
       onUpdated(order._id, status);

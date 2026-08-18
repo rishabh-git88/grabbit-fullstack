@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE = 'https://grabbit-fullstack.onrender.com/api';
+const API_BASE = process.env.REACT_APP_API_URL;
+
+if (!API_BASE) {
+  throw new Error('REACT_APP_API_URL is required');
+}
 
 const api = axios.create({ baseURL: API_BASE });
 
@@ -45,6 +49,7 @@ export const menuAPI = {
 export const orderAPI = {
   getCafeOrders: (cafeId, params) => api.get(`/orders/cafe/${cafeId}`, { params }),
   updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
+  collectRemainingPayment: (id) => api.post(`/payment/${id}/collect-remaining`),
 };
 
 export default api;
