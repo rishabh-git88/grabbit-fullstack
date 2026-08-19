@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
 const Cafe = require('../models/Cafe');
 const QRCode = require('qrcode');
+const { canManageCafe } = require('../utils/vendorAccess');
 
 // @desc    Place a new order
 // @route   POST /api/orders
@@ -110,8 +111,8 @@ const getUserOrders = async (req, res) => {
 const getCafeOrders = async (req, res) => {
   try {
     const { status, limit = 50 } = req.query;
-    const cafe = await Cafe.findOne({ _id: req.params.cafeId, vendorId: req.user._id });
-    if (!cafe) return res.status(403).json({ success: false, message: 'Not authorized' });
+    const cafe = await Cafe.findById(req.params.cafeId);
+    if (!canManageCafe(req.user, cafe)) return res.status(403).json({ success: false, message: 'Not authorized' });
     const query = { cafeId: req.params.cafeId, paymentStatus: { $in: ['partial', 'full'] } };
     if (status) query.status = status;
 
@@ -146,7 +147,7 @@ const updateOrderStatus = async (req, res) => {
 
     // Verify vendor owns this cafe
     const cafe = await Cafe.findById(order.cafeId);
-    if (!cafe || cafe.vendorId.toString() !== req.user._id.toString()) {
+    if (!canManageCafe(req.user, cafe)) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
@@ -193,7 +194,7 @@ const getOrder = async (req, res) => {
       .populate('cafeId', 'name location imageUrl vendorId');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     const isOwner = order.userId._id.toString() === req.user._id.toString();
-    const isVendor = req.user.role === 'vendor' && order.cafeId.vendorId?.toString() === req.user._id.toString();
+    const isVendor = canManageCafe(req.user, order.cafeId);
     if (!isOwner && !isVendor) return res.status(403).json({ success: false, message: 'Not authorized' });
     res.json({ success: true, order });
   } catch (error) {

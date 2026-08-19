@@ -1,14 +1,21 @@
 const MenuItem = require('../models/MenuItem');
 const Cafe = require('../models/Cafe');
+const { canManageCafe } = require('../utils/vendorAccess');
+
+const getManagedCafe = async (user, cafeId) => {
+  if (!cafeId) return null;
+  const cafe = await Cafe.findById(cafeId);
+  return canManageCafe(user, cafe) ? cafe : null;
+};
 
 // @desc    Add menu item
 // @route   POST /api/menu
 // @access  Private (Vendor)
 const addMenuItem = async (req, res) => {
   try {
-    const { name, description, price, category, imageUrl, isAvailable, preparationTime } = req.body;
+    const { name, description, price, category, imageUrl, isAvailable, preparationTime, cafeId } = req.body;
 
-    const cafe = await Cafe.findOne({ vendorId: req.user._id });
+    const cafe = await getManagedCafe(req.user, cafeId);
     if (!cafe) {
       return res.status(404).json({ success: false, message: 'No cafe found for this vendor' });
     }
@@ -38,7 +45,7 @@ const updateMenuItem = async (req, res) => {
     const item = await MenuItem.findById(req.params.id).populate('cafeId');
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
 
-    if (item.cafeId.vendorId.toString() !== req.user._id.toString()) {
+    if (!canManageCafe(req.user, item.cafeId)) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
@@ -65,7 +72,7 @@ const deleteMenuItem = async (req, res) => {
     const item = await MenuItem.findById(req.params.id).populate('cafeId');
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
 
-    if (item.cafeId.vendorId.toString() !== req.user._id.toString()) {
+    if (!canManageCafe(req.user, item.cafeId)) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
@@ -81,7 +88,7 @@ const deleteMenuItem = async (req, res) => {
 // @access  Private (Vendor)
 const getVendorMenu = async (req, res) => {
   try {
-    const cafe = await Cafe.findOne({ vendorId: req.user._id });
+    const cafe = await getManagedCafe(req.user, req.query.cafeId);
     if (!cafe) return res.status(404).json({ success: false, message: 'No cafe found' });
 
     const menu = await MenuItem.find({ cafeId: cafe._id }).sort('category');

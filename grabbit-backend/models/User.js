@@ -31,6 +31,12 @@ const userSchema = new mongoose.Schema(
       ref: 'Cafe',
       default: null, // Only for vendors
     },
+    // Explicit extra café permissions. This lets a trusted account manage more
+    // than one café without changing the café's primary vendor record.
+    managedCafeIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Cafe',
+    }],
     firebaseUid: {
       type: String,
       unique: true,

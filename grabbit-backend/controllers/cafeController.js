@@ -1,5 +1,6 @@
 const Cafe = require('../models/Cafe');
 const MenuItem = require('../models/MenuItem');
+const { canManageCafe } = require('../utils/vendorAccess');
 
 // @desc    Get all cafes
 // @route   GET /api/cafes
@@ -41,6 +42,23 @@ const getCafeMenu = async (req, res) => {
   }
 };
 
+// @desc    Get every cafe the signed-in vendor can manage
+// @route   GET /api/cafes/vendor
+// @access  Private (Vendor)
+const getManagedCafes = async (req, res) => {
+  try {
+    const cafes = await Cafe.find({
+      $or: [
+        { vendorId: req.user._id },
+        { _id: { $in: req.user.managedCafeIds || [] } },
+      ],
+    }).sort('name');
+    res.json({ success: true, count: cafes.length, cafes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Unable to fetch managed cafes' });
+  }
+};
+
 // @desc    Update cafe status (vendor only)
 // @route   PUT /api/cafes/:id/status
 // @access  Private (Vendor)
@@ -49,7 +67,7 @@ const updateCafeStatus = async (req, res) => {
     const cafe = await Cafe.findById(req.params.id);
     if (!cafe) return res.status(404).json({ success: false, message: 'Cafe not found' });
 
-    if (cafe.vendorId.toString() !== req.user._id.toString()) {
+    if (!canManageCafe(req.user, cafe)) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this cafe' });
     }
 
@@ -63,4 +81,4 @@ const updateCafeStatus = async (req, res) => {
   }
 };
 
-module.exports = { getCafes, getCafe, getCafeMenu, updateCafeStatus };
+module.exports = { getCafes, getCafe, getCafeMenu, getManagedCafes, updateCafeStatus };

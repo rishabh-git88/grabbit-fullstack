@@ -35,13 +35,14 @@ export const authAPI = {
 
 export const cafeAPI = {
   getAll: () => api.get('/cafes'),
+  getManaged: () => api.get('/cafes/vendor'),
   get: (id) => api.get(`/cafes/${id}`),
   updateStatus: (id, isOpen) => api.put(`/cafes/${id}/status`, { isOpen }),
   getMenu: (id) => api.get(`/cafes/${id}/menu`),
 };
 
 export const menuAPI = {
-  getVendorMenu: () => api.get('/menu/vendor'),
+  getVendorMenu: (cafeId) => api.get('/menu/vendor', { params: { cafeId } }),
   add: (data) => api.post('/menu', data),
   update: (id, data) => api.put(`/menu/${id}`, data),
   delete: (id) => api.delete(`/menu/${id}`),

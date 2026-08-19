@@ -9,6 +9,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api';
+import { hasVendorAccess } from '../utils/access';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -26,8 +27,8 @@ export default function Login() {
   const portal = searchParams.get('portal') === 'vendor' ? 'vendor' : 'student';
 
   useEffect(() => {
-    if (user) navigate(user.role === 'vendor' ? '/vendor' : '/student', { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(portal === 'vendor' && hasVendorAccess(user) ? '/vendor' : '/student', { replace: true });
+  }, [user, navigate, portal]);
 
   const clearRecaptcha = () => {
     if (recaptchaRef.current) { recaptchaRef.current.clear(); recaptchaRef.current = null; }
@@ -61,7 +62,7 @@ export default function Login() {
     try {
       const res = await authAPI.firebaseLogin({ firebaseToken });
       if (res.data.success) {
-        if (portal === 'vendor' && res.data.user.role !== 'vendor') {
+        if (portal === 'vendor' && !hasVendorAccess(res.data.user)) {
           toast.error('This account is not registered as a vendor. Use the student dashboard or sign in with your vendor account.');
           return;
         }

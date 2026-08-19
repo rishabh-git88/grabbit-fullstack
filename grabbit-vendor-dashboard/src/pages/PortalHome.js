@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { hasVendorAccess } from '../utils/access';
 
 export default function PortalHome() {
   const { user, logout, loading } = useAuth();
@@ -8,7 +9,7 @@ export default function PortalHome() {
 
   if (loading) return null;
 
-  const openDashboard = () => navigate(user?.role === 'vendor' ? '/vendor' : '/student');
+  const canManageCafes = hasVendorAccess(user);
 
   return (
     <main style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f1117, #1a1d2e)', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: '32px 24px', boxSizing: 'border-box' }}>
@@ -23,8 +24,9 @@ export default function PortalHome() {
           <section style={{ maxWidth: 540, margin: '0 auto', background: '#1a1d2e', border: '1px solid #374151', borderRadius: 20, padding: 32, textAlign: 'center' }}>
             <p style={{ color: '#9ca3af', margin: 0 }}>Signed in as</p>
             <h2 style={{ margin: '8px 0', fontSize: 24 }}>{user.name}</h2>
-            <p style={{ color: '#f97316', margin: '0 0 24px', fontWeight: 700, textTransform: 'capitalize' }}>{user.role} account</p>
-            <button onClick={openDashboard} style={primaryButton}>Open {user.role === 'vendor' ? 'Vendor' : 'Student'} Dashboard</button>
+            <p style={{ color: '#f97316', margin: '0 0 24px', fontWeight: 700 }}>{canManageCafes ? 'Student and vendor access' : 'Student account'}</p>
+            <button onClick={() => navigate('/student')} style={primaryButton}>Open Student Dashboard</button>
+            {canManageCafes && <button onClick={() => navigate('/vendor')} style={{ ...primaryButton, marginTop: 12 }}>Open Vendor Dashboard</button>}
             <button onClick={() => logout()} style={secondaryButton}>Sign out to use another account</button>
           </section>
         ) : (

@@ -9,7 +9,7 @@ const navItems = [
   { to: '/vendor/settings', icon: '⚙️', label: 'Settings' },
 ];
 
-const Sidebar = ({ cafe, isOpen, onToggleOpen }) => {
+const Sidebar = ({ cafe, cafes, onCafeChange, isOpen, onToggleOpen }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -37,6 +37,11 @@ const Sidebar = ({ cafe, isOpen, onToggleOpen }) => {
         <div className="px-6 py-4 border-b border-white/5">
           <p className="text-xs text-[#8892A4] mb-1 uppercase tracking-wider">Your Cafe</p>
           <p className="font-display font-semibold text-white text-sm">{cafe.name}</p>
+          {cafes.length > 1 && (
+            <select value={cafe._id} onChange={(event) => onCafeChange(event.target.value)} className="mt-2 w-full bg-[#0F3460] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white">
+              {cafes.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+            </select>
+          )}
           <div className="flex items-center gap-2 mt-2">
             <button
               onClick={onToggleOpen}

@@ -38,6 +38,7 @@ const register = async (req, res) => {
         email: user.email,
         role: user.role,
         cafeId: user.cafeId,
+        managedCafeIds: user.managedCafeIds || [],
       },
     });
   } catch (error) {
@@ -73,6 +74,7 @@ const login = async (req, res) => {
         email: user.email,
         role: user.role,
         cafeId: user.cafeId,
+        managedCafeIds: user.managedCafeIds || [],
       },
     });
   } catch (error) {

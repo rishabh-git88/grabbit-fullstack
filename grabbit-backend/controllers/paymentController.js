@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
+const { canManageCafe } = require('../utils/vendorAccess');
 
 const notifyVendor = async (io, orderId) => {
   if (!io) return;
@@ -200,7 +201,7 @@ const collectRemainingPayment = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId).populate('cafeId', 'vendorId');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (order.cafeId.vendorId.toString() !== req.user._id.toString()) {
+    if (!canManageCafe(req.user, order.cafeId)) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
     if (order.status !== 'ready' || order.paymentStatus !== 'partial') {

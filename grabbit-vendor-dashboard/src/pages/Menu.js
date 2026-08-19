@@ -75,7 +75,7 @@ const MenuItemForm = ({ initial, onSave, onCancel }) => {
   );
 };
 
-const Menu = () => {
+const Menu = ({ cafe }) => {
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -84,12 +84,13 @@ const Menu = () => {
 
   useEffect(() => {
     fetchMenu();
-  }, []);
+  }, [cafe?._id]);
 
   const fetchMenu = async () => {
     setLoading(true);
     try {
-      const res = await menuAPI.getVendorMenu();
+      if (!cafe?._id) return;
+      const res = await menuAPI.getVendorMenu(cafe._id);
       setMenu(res.data.menu);
     } catch (err) {
       toast.error('Failed to load menu');
@@ -100,7 +101,7 @@ const Menu = () => {
 
   const handleAdd = async (data) => {
     try {
-      await menuAPI.add(data);
+      await menuAPI.add({ ...data, cafeId: cafe._id });
       toast.success('Item added!');
       setShowForm(false);
       fetchMenu();
@@ -147,7 +148,7 @@ const Menu = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">Menu</h1>
+          <h1 className="font-display text-2xl font-bold text-white">{cafe ? `${cafe.name} Menu` : 'Menu'}</h1>
           <p className="text-xs text-[#8892A4] mt-1">{menu.length} items</p>
         </div>
         <button onClick={() => { setShowForm(true); setEditItem(null); }}

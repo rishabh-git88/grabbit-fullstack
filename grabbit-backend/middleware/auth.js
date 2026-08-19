@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isVendorUser } = require('../utils/vendorAccess');
 
 const protect = async (req, res, next) => {
   let token;
@@ -26,7 +27,11 @@ const protect = async (req, res, next) => {
 
 const restrictTo = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    const permitted = roles.some((role) => {
+      if (role === 'vendor') return isVendorUser(req.user);
+      return req.user.role === role;
+    });
+    if (!permitted) {
       return res.status(403).json({
         success: false,
         message: `Access denied. Only ${roles.join(', ')} can perform this action.`,

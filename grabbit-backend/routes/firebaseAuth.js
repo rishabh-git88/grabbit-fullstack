@@ -70,7 +70,8 @@ router.post('/firebase-login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        cafeId: user.cafeId
+        cafeId: user.cafeId,
+        managedCafeIds: user.managedCafeIds || [],
       }
     });
   } catch (err) {

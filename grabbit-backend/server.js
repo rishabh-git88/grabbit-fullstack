@@ -20,6 +20,7 @@ const orderRoutes = require('./routes/order');
 const paymentRoutes = require('./routes/payment');
 const firebaseAuthRoutes = require('./routes/firebaseAuth');
 const { paymentWebhook } = require('./controllers/paymentController');
+const { isVendorUser, canManageCafe } = require('./utils/vendorAccess');
 
 const app = express();
 const server = http.createServer(app);
@@ -83,15 +84,14 @@ io.on('connection', (socket) => {
   console.log(JSON.stringify({ event: 'socket_connected', userId: socket.data.user._id.toString() }));
 
   socket.on('join_user_room', () => {
-    if (socket.data.user.role !== 'student') return;
     socket.join(`user_${socket.data.user._id}`);
   });
 
-  socket.on('join_cafe_room', async () => {
-    if (socket.data.user.role !== 'vendor' || !socket.data.user.cafeId) return;
+  socket.on('join_cafe_room', async (cafeId) => {
+    if (!isVendorUser(socket.data.user) || !cafeId) return;
     const Cafe = require('./models/Cafe');
-    const cafe = await Cafe.findOne({ _id: socket.data.user.cafeId, vendorId: socket.data.user._id });
-    if (cafe) socket.join(`cafe_${cafe._id}`);
+    const cafe = await Cafe.findById(cafeId);
+    if (canManageCafe(socket.data.user, cafe)) socket.join(`cafe_${cafe._id}`);
   });
 
   socket.on('disconnect', () => {

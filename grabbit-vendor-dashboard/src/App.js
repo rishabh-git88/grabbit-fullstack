@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { cafeAPI } from './api';
@@ -15,26 +15,40 @@ import StudentCart from './student/pages/Cart';
 import StudentOrderTracking from './student/pages/OrderTracking';
 import StudentOrders from './student/pages/Orders';
 import { CartProvider } from './student/context/CartContext';
+import { hasVendorAccess } from './utils/access';
 import './index.css';
 
 const VendorLayout = () => {
   const { user, loading } = useAuth();
   const [cafe, setCafe] = useState(null);
+  const [cafes, setCafes] = useState([]);
   const [cafeOpen, setCafeOpen] = useState(false);
 
   useEffect(() => {
-    if (user?.cafeId) {
-      cafeAPI.getMenu(user.cafeId).then(res => {
-        setCafe(res.data.cafe);
-        setCafeOpen(res.data.cafe.isOpen);
+    if (user && hasVendorAccess(user)) {
+      cafeAPI.getManaged().then((res) => {
+        const managed = res.data.cafes || [];
+        const storedId = localStorage.getItem('grabbit_vendor_cafe_id');
+        const selected = managed.find((item) => item._id === storedId) || managed[0] || null;
+        setCafes(managed);
+        setCafe(selected);
+        setCafeOpen(Boolean(selected?.isOpen));
       }).catch(() => {});
     }
   }, [user]);
+
+  const handleCafeChange = (cafeId) => {
+    const selected = cafes.find((item) => item._id === cafeId) || null;
+    localStorage.setItem('grabbit_vendor_cafe_id', cafeId);
+    setCafe(selected);
+    setCafeOpen(Boolean(selected?.isOpen));
+  };
 
   const handleToggleOpen = async () => {
     try {
       await cafeAPI.updateStatus(cafe._id, !cafeOpen);
       setCafeOpen(v => !v);
+      setCafe((current) => current ? { ...current, isOpen: !cafeOpen } : current);
     } catch {}
   };
 
@@ -45,16 +59,16 @@ const VendorLayout = () => {
   );
 
   if (!user) return <Navigate to="/login?portal=vendor" replace />;
-  if (user.role !== 'vendor') return <Navigate to="/" replace />;
+  if (!hasVendorAccess(user)) return <Navigate to="/" replace />;
 
   return (
     <div className="flex min-h-screen bg-[#1A1A2E]">
-      <Sidebar cafe={cafe} isOpen={cafeOpen} onToggleOpen={handleToggleOpen} />
+      <Sidebar cafe={cafe} cafes={cafes} onCafeChange={handleCafeChange} isOpen={cafeOpen} onToggleOpen={handleToggleOpen} />
       <main className="flex-1 ml-64 p-8 min-h-screen">
         <div className="max-w-5xl mx-auto">
           <Routes>
             <Route index element={<Orders cafe={cafe} />} />
-            <Route path="menu" element={<Menu />} />
+            <Route path="menu" element={<Menu cafe={cafe} />} />
             <Route path="settings" element={<Settings cafe={cafe} />} />
           </Routes>
         </div>
@@ -92,14 +106,14 @@ const StudentRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login?portal=student" replace />;
-  if (user.role === 'vendor') return <Navigate to="/vendor" replace />;
   return children;
 };
 
 const LoginGuard = () => {
   const { user, loading } = useAuth();
+  const [searchParams] = useSearchParams();
   if (loading) return null;
-  if (user) return <Navigate to={user.role === 'vendor' ? '/vendor' : '/'} replace />;
+  if (user) return <Navigate to={searchParams.get('portal') === 'vendor' && hasVendorAccess(user) ? '/vendor' : '/student'} replace />;
   return <Login />;
 };
 
