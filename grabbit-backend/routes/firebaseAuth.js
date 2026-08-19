@@ -17,6 +17,17 @@ if (!getApps().length) {
   });
 }
 
+// This project enables Mongoose's `sanitizeFilter` globally. Query operators
+// such as `$or` are therefore treated as values rather than MongoDB operators.
+// Look up each trusted Firebase identity explicitly so first-time Google users
+// can always be provisioned as students.
+const findUserByFirebaseIdentity = async ({ uid, email, phone }) => {
+  let user = await User.findOne({ firebaseUid: uid });
+  if (!user && email) user = await User.findOne({ email });
+  if (!user && phone) user = await User.findOne({ phone });
+  return user;
+};
+
 router.post('/firebase-login', async (req, res) => {
   try {
     const { firebaseToken } = req.body;
@@ -25,25 +36,19 @@ router.post('/firebase-login', async (req, res) => {
     }
 
     const decoded = await getAuth().verifyIdToken(firebaseToken);
-    const email = decoded.email;
+    const email = decoded.email?.trim().toLowerCase();
     const phone = decoded.phone_number;
 
-    const userQuery = {
-      $or: [
-        { firebaseUid: decoded.uid },
-        { email: email },
-        { phone: phone }
-      ].filter((condition) => Object.values(condition)[0])
-    };
-    let user = await User.findOne(userQuery);
+    let user = await findUserByFirebaseIdentity({ uid: decoded.uid, email, phone });
 
     if (!user) {
       try {
         user = await User.create(buildFirebaseStudent(decoded));
+        console.log(JSON.stringify({ event: 'firebase_student_created', userId: user._id }));
       } catch (error) {
         // A concurrent first login can race on one of the unique identity fields.
         if (error?.code !== 11000) throw error;
-        user = await User.findOne(userQuery);
+        user = await findUserByFirebaseIdentity({ uid: decoded.uid, email, phone });
         if (!user) throw error;
       }
     }
