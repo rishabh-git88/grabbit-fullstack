@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { isVendorUser } = require('../utils/vendorAccess');
+const { grantConfiguredCafeAccess } = require('../utils/provisionManagedCafes');
 
 const protect = async (req, res, next) => {
   let token;
@@ -18,6 +19,15 @@ const protect = async (req, res, next) => {
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'User not found' });
+    }
+
+    // Keep allowlisted vendor access in sync even when the browser has an old
+    // login response. This is a no-op for all student accounts.
+    try {
+      const result = await grantConfiguredCafeAccess(req.user.email);
+      if (result) req.user = await User.findById(decoded.id).select('-password');
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'configured_vendor_access_failed', message: error.message }));
     }
     next();
   } catch (error) {
