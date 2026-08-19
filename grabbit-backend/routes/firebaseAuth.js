@@ -5,7 +5,7 @@ const { getAuth } = require('firebase-admin/auth');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { buildFirebaseStudent } = require('../utils/firebaseUser');
-const { grantAllCafeAccess } = require('../utils/provisionManagedCafes');
+const { grantAllCafeAccess, grantConfiguredCafeAccess } = require('../utils/provisionManagedCafes');
 
 if (!getApps().length) {
   initializeApp({
@@ -61,9 +61,15 @@ router.post('/firebase-login', async (req, res) => {
     // A trusted account configured by the Render environment receives its
     // assigned multi-cafe access at sign-in too. This is idempotent and avoids
     // depending on a paid Render Shell or a particular service restart.
-    const configuredVendorEmail = process.env.MULTI_CAFE_VENDOR_EMAIL?.trim().toLowerCase();
-    if (configuredVendorEmail && email?.trim().toLowerCase() === configuredVendorEmail) {
-      await grantAllCafeAccess(email);
+    let configuredAccess = null;
+    try {
+      configuredAccess = await grantConfiguredCafeAccess(email);
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'configured_vendor_access_failed', message: error.message }));
+    }
+    const legacyConfiguredVendorEmail = process.env.MULTI_CAFE_VENDOR_EMAIL?.trim().toLowerCase();
+    if (configuredAccess || (legacyConfiguredVendorEmail && email?.trim().toLowerCase() === legacyConfiguredVendorEmail)) {
+      if (!configuredAccess) await grantAllCafeAccess(email);
       user = await User.findById(user._id);
     }
 

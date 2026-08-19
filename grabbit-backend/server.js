@@ -21,7 +21,7 @@ const paymentRoutes = require('./routes/payment');
 const firebaseAuthRoutes = require('./routes/firebaseAuth');
 const { paymentWebhook } = require('./controllers/paymentController');
 const { isVendorUser, canManageCafe } = require('./utils/vendorAccess');
-const { grantAllCafeAccess } = require('./utils/provisionManagedCafes');
+const { grantAllCafeAccess, provisionConfiguredVendors } = require('./utils/provisionManagedCafes');
 
 const app = express();
 const server = http.createServer(app);
@@ -113,12 +113,18 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   await mongoose.connect(process.env.MONGO_URI);
+  try {
+    const results = await provisionConfiguredVendors();
+    results.forEach(({ email, result }) => console.log(JSON.stringify({ event: 'configured_vendor_access_granted', email, ...result })));
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'configured_vendor_access_failed', message: error.message }));
+  }
   if (process.env.MULTI_CAFE_VENDOR_EMAIL) {
     try {
       const result = await grantAllCafeAccess(process.env.MULTI_CAFE_VENDOR_EMAIL);
-      console.log(JSON.stringify({ event: 'configured_vendor_access_granted', ...result }));
+      console.log(JSON.stringify({ event: 'legacy_vendor_access_granted', ...result }));
     } catch (error) {
-      console.error(JSON.stringify({ event: 'configured_vendor_access_failed', message: error.message }));
+      console.error(JSON.stringify({ event: 'legacy_vendor_access_failed', message: error.message }));
     }
   }
   const PORT = process.env.PORT || 5000;
