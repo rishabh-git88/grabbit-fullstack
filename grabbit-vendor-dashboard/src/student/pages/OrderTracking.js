@@ -40,7 +40,7 @@ export default function OrderTracking() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div style={{ background: '#1a1d2e', borderBottom: '1px solid #2d3148', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={() => navigate('/')} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 20 }}>←</button>
+        <button onClick={() => navigate('/student')} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 20 }}>←</button>
         <span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>Order #{order.orderNumber}</span>
       </div>
 

@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Menu from './pages/Menu';
 import Settings from './pages/Settings';
+import PortalHome from './pages/PortalHome';
 import StudentHome from './student/pages/Home';
 import StudentMenu from './student/pages/Menu';
 import StudentCart from './student/pages/Cart';
@@ -43,7 +44,7 @@ const VendorLayout = () => {
     </div>
   );
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login?portal=vendor" replace />;
   if (user.role !== 'vendor') return <Navigate to="/" replace />;
 
   return (
@@ -73,11 +74,12 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginGuard />} />
             <Route path="/vendor/*" element={<VendorLayout />} />
-            <Route path="/" element={<StudentRoute><StudentHome /></StudentRoute>} />
-            <Route path="/menu/:cafeId" element={<StudentRoute><StudentMenu /></StudentRoute>} />
-            <Route path="/cart" element={<StudentRoute><StudentCart /></StudentRoute>} />
-            <Route path="/track/:orderId" element={<StudentRoute><StudentOrderTracking /></StudentRoute>} />
-            <Route path="/orders" element={<StudentRoute><StudentOrders /></StudentRoute>} />
+            <Route path="/" element={<PortalHome />} />
+            <Route path="/student" element={<StudentRoute><StudentHome /></StudentRoute>} />
+            <Route path="/student/menu/:cafeId" element={<StudentRoute><StudentMenu /></StudentRoute>} />
+            <Route path="/student/cart" element={<StudentRoute><StudentCart /></StudentRoute>} />
+            <Route path="/student/track/:orderId" element={<StudentRoute><StudentOrderTracking /></StudentRoute>} />
+            <Route path="/student/orders" element={<StudentRoute><StudentOrders /></StudentRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
@@ -89,7 +91,7 @@ function App() {
 const StudentRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login?portal=student" replace />;
   if (user.role === 'vendor') return <Navigate to="/vendor" replace />;
   return children;
 };

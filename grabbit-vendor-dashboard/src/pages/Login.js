@@ -6,7 +6,7 @@ import {
   signInWithPhoneNumber,
   signInWithPopup
 } from '../firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api';
 import toast from 'react-hot-toast';
@@ -21,10 +21,12 @@ export default function Login() {
   const [recaptchaSolved, setRecaptchaSolved] = useState(false);
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const recaptchaRef = useRef(null);
+  const portal = searchParams.get('portal') === 'vendor' ? 'vendor' : 'student';
 
   useEffect(() => {
-    if (user) navigate(user.role === 'vendor' ? '/vendor' : '/', { replace: true });
+    if (user) navigate(user.role === 'vendor' ? '/vendor' : '/student', { replace: true });
   }, [user, navigate]);
 
   const clearRecaptcha = () => {
@@ -59,6 +61,10 @@ export default function Login() {
     try {
       const res = await authAPI.firebaseLogin({ firebaseToken });
       if (res.data.success) {
+        if (portal === 'vendor' && res.data.user.role !== 'vendor') {
+          toast.error('This account is not registered as a vendor. Use the student dashboard or sign in with your vendor account.');
+          return;
+        }
         await login(res.data.user, res.data.token);
         toast.success(`Welcome ${res.data.user.name}!`);
       }
@@ -184,8 +190,8 @@ export default function Login() {
               }}>🤌</div>
               <span style={{ color: '#fff', fontSize: 24, fontWeight: 800 }}>grabbit</span>
             </div>
-            <h2 style={{ color: '#fff', margin: '0 0 4px', fontSize: 22, fontWeight: 700 }}>Campus Food Portal</h2>
-            <p style={{ color: '#6b7280', margin: 0, fontSize: 14 }}>Sign in to order food or manage your cafe</p>
+            <h2 style={{ color: '#fff', margin: '0 0 4px', fontSize: 22, fontWeight: 700 }}>{portal === 'vendor' ? 'Vendor Dashboard' : 'Student Dashboard'}</h2>
+            <p style={{ color: '#6b7280', margin: 0, fontSize: 14 }}>{portal === 'vendor' ? 'Sign in to manage your cafe' : 'Sign in to order food'}</p>
           </div>
 
           {/* Tab Toggle */}
@@ -243,7 +249,7 @@ export default function Login() {
             </div>
           )}
 
-          <p style={{ color: '#374151', fontSize: 12, textAlign: 'center', marginTop: 24 }}>Students and registered vendors can sign in here</p>
+          <button onClick={() => navigate('/')} style={{ width: '100%', background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 12, marginTop: 24 }}>← Choose a different dashboard</button>
         </div>
       </div>
 

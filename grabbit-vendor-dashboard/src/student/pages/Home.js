@@ -26,11 +26,11 @@ export default function Home() {
           <span style={{ color: '#fff', fontSize: 20, fontWeight: 700 }}>grabbit</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button onClick={() => navigate('/orders')} style={{ background: 'transparent', border: '1px solid #374151', color: '#9ca3af', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>📋 My Orders</button>
-          <button onClick={() => navigate('/cart')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600, position: 'relative' }}>
+          <button onClick={() => navigate('/student/orders')} style={{ background: 'transparent', border: '1px solid #374151', color: '#9ca3af', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>📋 My Orders</button>
+          <button onClick={() => navigate('/student/cart')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600, position: 'relative' }}>
             🛒 Cart {itemCount > 0 && <span style={{ background: '#ef4444', borderRadius: '50%', padding: '2px 6px', fontSize: 11, marginLeft: 4 }}>{itemCount}</span>}
           </button>
-          <button onClick={() => { logout(); navigate('/login'); }} style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 14 }}>Logout</button>
+          <button onClick={() => { logout(); navigate('/'); }} style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 14 }}>Logout</button>
         </div>
       </div>
 
@@ -45,7 +45,7 @@ export default function Home() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
             {cafes.map(cafe => (
-              <div key={cafe._id} onClick={() => cafe.isOpen && navigate(`/menu/${cafe._id}`)}
+              <div key={cafe._id} onClick={() => cafe.isOpen && navigate(`/student/menu/${cafe._id}`)}
                 style={{ background: '#1a1d2e', borderRadius: 16, padding: 24, border: '1px solid #2d3148', cursor: cafe.isOpen ? 'pointer' : 'not-allowed', opacity: cafe.isOpen ? 1 : 0.6, transition: 'transform 0.2s', position: 'relative' }}
                 onMouseEnter={e => cafe.isOpen && (e.currentTarget.style.transform = 'translateY(-4px)')}
                 onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>

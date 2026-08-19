@@ -20,7 +20,7 @@ export default function Orders() {
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div style={{ background: '#1a1d2e', borderBottom: '1px solid #2d3148', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 100 }}>
-        <button onClick={() => navigate('/')} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 20 }}>←</button>
+        <button onClick={() => navigate('/student')} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 20 }}>←</button>
         <span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>My Orders</span>
       </div>
 
@@ -31,11 +31,11 @@ export default function Orders() {
           <div style={{ textAlign: 'center', padding: 60 }}>
             <div style={{ fontSize: 60, marginBottom: 16 }}>📋</div>
             <h3 style={{ color: '#fff' }}>No orders yet</h3>
-            <button onClick={() => navigate('/')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 10, cursor: 'pointer', marginTop: 16 }}>Order Now</button>
+            <button onClick={() => navigate('/student')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 10, cursor: 'pointer', marginTop: 16 }}>Order Now</button>
           </div>
         ) : (
           orders.map(order => (
-            <div key={order._id} onClick={() => navigate(`/track/${order._id}`)}
+            <div key={order._id} onClick={() => navigate(`/student/track/${order._id}`)}
               style={{ background: '#1a1d2e', borderRadius: 14, padding: 20, marginBottom: 12, border: '1px solid #2d3148', cursor: 'pointer', transition: 'transform 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>

@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { signOut } from 'firebase/auth';
 import { authAPI } from '../api';
+import { auth } from '../firebase';
 
 const AuthContext = createContext(null);
 
@@ -41,6 +43,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('grabbit_token');
     localStorage.removeItem('grabbit_user');
     setUser(null);
+    signOut(auth).catch(() => {});
   };
 
   return (

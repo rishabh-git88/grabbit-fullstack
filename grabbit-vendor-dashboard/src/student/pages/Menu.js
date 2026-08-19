@@ -31,11 +31,11 @@ export default function Menu() {
       {/* Navbar */}
       <div style={{ background: '#1a1d2e', borderBottom: '1px solid #2d3148', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => navigate('/')} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 20 }}>←</button>
+          <button onClick={() => navigate('/student')} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 20 }}>←</button>
           <span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>{cafe?.name || 'Menu'}</span>
           <span style={{ background: cafe?.isOpen ? '#10b98120' : '#ef444420', color: cafe?.isOpen ? '#10b981' : '#ef4444', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>{cafe?.isOpen ? '● Open' : '● Closed'}</span>
         </div>
-        <button onClick={() => navigate('/cart')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+        <button onClick={() => navigate('/student/cart')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
           🛒 Cart {itemCount > 0 && `(${itemCount})`}
         </button>
       </div>

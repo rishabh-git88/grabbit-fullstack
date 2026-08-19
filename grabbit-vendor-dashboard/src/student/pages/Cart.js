@@ -31,7 +31,7 @@ export default function Cart() {
       if (payRes.data.simulated) {
         clearCart();
         toast.success('Order placed successfully!');
-        navigate(`/track/${order._id}`);
+        navigate(`/student/track/${order._id}`);
         setLoading(false);
         return;
       }
@@ -61,7 +61,7 @@ export default function Cart() {
             });
             clearCart();
             toast.success('Payment successful! Order placed 🎉');
-            navigate(`/track/${order._id}`);
+            navigate(`/student/track/${order._id}`);
           } catch (err) {
             toast.error('Order failed after payment. Contact support.');
           } finally {
@@ -85,7 +85,7 @@ export default function Cart() {
         <div style={{ fontSize: 80, marginBottom: 24 }}>🛒</div>
         <h2 style={{ color: '#fff', margin: '0 0 8px' }}>Your cart is empty</h2>
         <p style={{ color: '#6b7280', marginBottom: 24 }}>Browse cafes and add some food!</p>
-        <button onClick={() => navigate('/')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '12px 24px', borderRadius: 12, cursor: 'pointer', fontSize: 16, fontWeight: 600 }}>Browse Cafes</button>
+        <button onClick={() => navigate('/student')} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '12px 24px', borderRadius: 12, cursor: 'pointer', fontSize: 16, fontWeight: 600 }}>Browse Cafes</button>
       </div>
     );
   }
