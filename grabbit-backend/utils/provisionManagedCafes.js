@@ -43,7 +43,9 @@ const grantConfiguredCafeAccess = async (email) => {
   const user = await User.findOne({ email: normalizedEmail });
   if (!user) throw new Error('No user exists for the configured vendor email');
 
-  const cafes = await Cafe.find({ name: { $in: cafeNames } }).select('_id name');
+  // Avoid query operators because this project enables Mongoose sanitizeFilter
+  // globally for request safety.
+  const cafes = (await Promise.all(cafeNames.map((name) => Cafe.findOne({ name }).select('_id name')))).filter(Boolean);
   const foundNames = new Set(cafes.map((cafe) => cafe.name));
   const missing = cafeNames.filter((name) => !foundNames.has(name));
   if (missing.length) throw new Error(`Configured cafes were not found: ${missing.join(', ')}`);
