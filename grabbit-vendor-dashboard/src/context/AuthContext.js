@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }) => {
     if (typeof emailOrUser === 'object') {
       const user = emailOrUser;
       const token = passwordOrToken;
-      if (user.role !== 'vendor') throw new Error('Access denied. Vendor account required.');
       localStorage.setItem('grabbit_token', token);
       localStorage.setItem('grabbit_user', JSON.stringify(user));
       setUser(user);
@@ -32,7 +31,6 @@ export const AuthProvider = ({ children }) => {
     // Traditional login — email and password
     const res = await authAPI.login({ email: emailOrUser, password: passwordOrToken });
     const { token, user } = res.data;
-    if (user.role !== 'vendor') throw new Error('Access denied. Vendor account required.');
     localStorage.setItem('grabbit_token', token);
     localStorage.setItem('grabbit_user', JSON.stringify(user));
     setUser(user);

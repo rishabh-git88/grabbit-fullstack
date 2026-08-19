@@ -34,6 +34,7 @@ export const authAPI = {
 };
 
 export const cafeAPI = {
+  getAll: () => api.get('/cafes'),
   get: (id) => api.get(`/cafes/${id}`),
   updateStatus: (id, isOpen) => api.put(`/cafes/${id}/status`, { isOpen }),
   getMenu: (id) => api.get(`/cafes/${id}/menu`),
@@ -47,9 +48,17 @@ export const menuAPI = {
 };
 
 export const orderAPI = {
+  place: (data) => api.post('/orders', data),
+  get: (id) => api.get(`/orders/${id}`),
+  getUserOrders: (userId) => api.get(`/orders/user/${userId}`),
   getCafeOrders: (cafeId, params) => api.get(`/orders/cafe/${cafeId}`, { params }),
   updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
   collectRemainingPayment: (id) => api.post(`/payment/${id}/collect-remaining`),
+};
+
+export const paymentAPI = {
+  create: (data) => api.post('/payment/create', data),
+  verify: (data) => api.post('/payment/verify', data),
 };
 
 export default api;

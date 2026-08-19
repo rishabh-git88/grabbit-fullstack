@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const navItems = [
-  { to: '/',       icon: '⚡', label: 'Orders'   },
-  { to: '/menu',   icon: '🍽️', label: 'Menu'     },
-  { to: '/settings', icon: '⚙️', label: 'Settings' },
+  { to: '/vendor',       icon: '⚡', label: 'Orders'   },
+  { to: '/vendor/menu',   icon: '🍽️', label: 'Menu'     },
+  { to: '/vendor/settings', icon: '⚙️', label: 'Settings' },
 ];
 
 const Sidebar = ({ cafe, isOpen, onToggleOpen }) => {
@@ -55,7 +55,7 @@ const Sidebar = ({ cafe, isOpen, onToggleOpen }) => {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map(item => (
           <NavLink
-            key={item.to} to={item.to} end={item.to === '/'}
+            key={item.to} to={item.to} end={item.to === '/vendor'}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 isActive

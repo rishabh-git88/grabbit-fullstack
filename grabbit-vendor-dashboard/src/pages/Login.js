@@ -23,7 +23,9 @@ export default function Login() {
   const navigate = useNavigate();
   const recaptchaRef = useRef(null);
 
-  useEffect(() => { if (user) navigate('/', { replace: true }); }, [user, navigate]);
+  useEffect(() => {
+    if (user) navigate(user.role === 'vendor' ? '/vendor' : '/', { replace: true });
+  }, [user, navigate]);
 
   const clearRecaptcha = () => {
     if (recaptchaRef.current) { recaptchaRef.current.clear(); recaptchaRef.current = null; }
@@ -129,7 +131,7 @@ export default function Login() {
             <span style={{ color: '#f97316' }}>food fast</span>
           </h1>
           <p style={{ color: '#9ca3af', fontSize: 18, margin: '0 0 40px', lineHeight: 1.6 }}>
-            Manage your cafe, track orders,<br />and serve your campus community
+            Order campus food, manage your cafe,<br />and serve your community
           </p>
 
           {/* Food items floating */}
@@ -182,13 +184,13 @@ export default function Login() {
               }}>🤌</div>
               <span style={{ color: '#fff', fontSize: 24, fontWeight: 800 }}>grabbit</span>
             </div>
-            <h2 style={{ color: '#fff', margin: '0 0 4px', fontSize: 22, fontWeight: 700 }}>Vendor Portal</h2>
-            <p style={{ color: '#6b7280', margin: 0, fontSize: 14 }}>Sign in to manage your cafe</p>
+            <h2 style={{ color: '#fff', margin: '0 0 4px', fontSize: 22, fontWeight: 700 }}>Campus Food Portal</h2>
+            <p style={{ color: '#6b7280', margin: 0, fontSize: 14 }}>Sign in to order food or manage your cafe</p>
           </div>
 
           {/* Tab Toggle */}
           <div style={{ display: 'flex', background: '#0f1117', borderRadius: 12, padding: 4, marginBottom: 28, border: '1px solid #2d3148' }}>
-            {[{ key: 'google', label: '📧 Gmail OTP' }, { key: 'phone', label: '📱 Mobile OTP' }].map((tab) => (
+            {[{ key: 'google', label: '📧 Google' }, { key: 'phone', label: '📱 Mobile OTP' }].map((tab) => (
               <button key={tab.key} onClick={() => handleModeSwitch(tab.key)}
                 style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 9, cursor: 'pointer', fontSize: 14, background: mode === tab.key ? 'linear-gradient(135deg, #f97316, #ea580c)' : 'transparent', color: mode === tab.key ? '#fff' : '#6b7280', fontWeight: mode === tab.key ? 600 : 400, transition: 'all 0.2s' }}>{tab.label}</button>
             ))}
@@ -241,7 +243,7 @@ export default function Login() {
             </div>
           )}
 
-          <p style={{ color: '#374151', fontSize: 12, textAlign: 'center', marginTop: 24 }}>Only registered vendors can access this dashboard</p>
+          <p style={{ color: '#374151', fontSize: 12, textAlign: 'center', marginTop: 24 }}>Students and registered vendors can sign in here</p>
         </div>
       </div>
 
