@@ -89,6 +89,12 @@ const Sidebar = ({ cafe, cafes, onCafeChange, isOpen, onToggleOpen }) => {
           </div>
         </div>
         <button
+          onClick={() => navigate('/student')}
+          className="w-full text-left px-4 py-2.5 mb-1 rounded-xl text-sm text-[#8892A4] hover:text-white hover:bg-white/5 transition-all"
+        >
+          🍽️ Open student portal
+        </button>
+        <button
           onClick={handleLogout}
           className="w-full text-left px-4 py-2.5 rounded-xl text-sm text-[#8892A4] hover:text-[#E94560] hover:bg-[#E94560]/10 transition-all"
         >

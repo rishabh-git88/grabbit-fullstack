@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../../components/ThemeToggle';
+import { hasVendorAccess } from '../../utils/access';
 
 export default function Home() {
   const [cafes, setCafes] = useState([]);
@@ -26,6 +27,7 @@ export default function Home() {
           <ThemeToggle />
           <button onClick={() => navigate('/student/orders')} className="nav-action">Orders</button>
           <button onClick={() => navigate('/student/cart')} className="cart-action">🛒 <span>Cart</span>{itemCount > 0 && <b>{itemCount}</b>}</button>
+          {hasVendorAccess(user) && <button onClick={() => navigate('/vendor')} className="nav-action">Vendor dashboard</button>}
           <button onClick={() => { logout(); navigate('/'); }} className="nav-action nav-logout">Sign out</button>
         </div>
       </header>

@@ -20,7 +20,8 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('grabbit_token');
       localStorage.removeItem('grabbit_user');
-      window.location.href = '/login';
+      const portal = window.location.pathname.startsWith('/vendor') ? 'vendor' : 'student';
+      window.location.href = `/login?portal=${portal}`;
     }
     return Promise.reject(err);
   }
