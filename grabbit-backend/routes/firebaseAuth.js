@@ -29,13 +29,20 @@ const findUserByFirebaseIdentity = async ({ uid, email, phone }) => {
 };
 
 router.post('/firebase-login', async (req, res) => {
-  try {
-    const { firebaseToken } = req.body;
-    if (!firebaseToken) {
-      return res.status(400).json({ success: false, message: 'Firebase token required' });
-    }
+  const { firebaseToken } = req.body;
+  if (!firebaseToken) {
+    return res.status(400).json({ success: false, message: 'Firebase token required' });
+  }
 
-    const decoded = await getAuth().verifyIdToken(firebaseToken);
+  let decoded;
+  try {
+    decoded = await getAuth().verifyIdToken(firebaseToken);
+  } catch (err) {
+    console.error(JSON.stringify({ event: 'firebase_token_verification_failed', code: err.code, message: err.message }));
+    return res.status(401).json({ success: false, message: 'Google sign-in could not be verified. Please try again.' });
+  }
+
+  try {
     const email = decoded.email?.trim().toLowerCase();
     const phone = decoded.phone_number;
 
@@ -96,8 +103,10 @@ router.post('/firebase-login', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(JSON.stringify({ event: 'firebase_login_failed', message: err.message }));
-    res.status(401).json({ success: false, message: 'Invalid Firebase token' });
+    // Provisioning failures are not token failures. Keep the detailed cause in
+    // Render logs while giving the person signing in an actionable retry.
+    console.error(JSON.stringify({ event: 'firebase_account_provisioning_failed', code: err.code, message: err.message }));
+    res.status(500).json({ success: false, message: 'We could not set up your account. Please try again.' });
   }
 });
 
