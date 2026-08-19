@@ -1,8 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
@@ -25,4 +23,4 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 // Keep the fallback student app consistent with the unified portal.
 googleProvider.setCustomParameters({ prompt: 'select_account' });
-export { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup };
+export { signInWithPopup };

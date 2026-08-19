@@ -1,8 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber,
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
@@ -25,4 +23,4 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 // Always let people choose an account instead of silently reusing the last one.
 googleProvider.setCustomParameters({ prompt: 'select_account' });
-export { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup };
+export { signInWithPopup };
