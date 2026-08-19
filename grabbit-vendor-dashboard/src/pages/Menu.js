@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { menuAPI } from '../api';
 import toast from 'react-hot-toast';
 
@@ -82,11 +82,7 @@ const Menu = ({ cafe }) => {
   const [editItem, setEditItem] = useState(null);
   const [filterCat, setFilterCat] = useState('All');
 
-  useEffect(() => {
-    fetchMenu();
-  }, [cafe?._id]);
-
-  const fetchMenu = async () => {
+  const fetchMenu = useCallback(async () => {
     setLoading(true);
     try {
       if (!cafe?._id) return;
@@ -97,7 +93,11 @@ const Menu = ({ cafe }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cafe?._id]);
+
+  useEffect(() => {
+    fetchMenu();
+  }, [fetchMenu]);
 
   const handleAdd = async (data) => {
     try {
