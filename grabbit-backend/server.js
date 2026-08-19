@@ -22,6 +22,7 @@ const firebaseAuthRoutes = require('./routes/firebaseAuth');
 const { paymentWebhook } = require('./controllers/paymentController');
 const { isVendorUser, canManageCafe } = require('./utils/vendorAccess');
 const { grantAllCafeAccess, provisionConfiguredVendors } = require('./utils/provisionManagedCafes');
+const User = require('./models/User');
 
 const app = express();
 const server = http.createServer(app);
@@ -113,6 +114,12 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   await mongoose.connect(process.env.MONGO_URI);
+  // Earlier versions persisted null in unique sparse identity fields. Remove
+  // those placeholders so each new Google account can be created independently.
+  await Promise.all([
+    User.updateMany({ phone: null }, { $unset: { phone: 1 } }),
+    User.updateMany({ firebaseUid: null }, { $unset: { firebaseUid: 1 } }),
+  ]);
   try {
     const results = await provisionConfiguredVendors();
     results.forEach(({ email, result }) => console.log(JSON.stringify({ event: 'configured_vendor_access_granted', email, ...result })));

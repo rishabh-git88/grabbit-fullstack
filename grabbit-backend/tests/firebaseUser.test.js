@@ -13,7 +13,7 @@ test('buildFirebaseStudent creates a student profile from Google identity data',
   assert.equal(user.email, 'student@college.edu');
   assert.equal(user.role, 'student');
   assert.equal(user.firebaseUid, 'google-user-id');
-  assert.equal(user.phone, null);
+  assert.equal(user.phone, undefined);
   assert.ok(user.password.length > 20);
 });
 

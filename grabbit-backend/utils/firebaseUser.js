@@ -15,7 +15,10 @@ const buildFirebaseStudent = (decoded) => {
     password: crypto.randomBytes(32).toString('base64url'),
     role: 'student',
     firebaseUid: decoded.uid,
-    phone: decoded.phone_number || null,
+    // Leave this field absent when Google does not provide a phone number.
+    // `phone` has a unique sparse index, and storing `null` can make unrelated
+    // Google accounts collide on that optional identity field.
+    ...(decoded.phone_number ? { phone: decoded.phone_number } : {}),
   };
 };
 
