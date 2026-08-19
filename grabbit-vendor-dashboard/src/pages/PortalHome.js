@@ -36,8 +36,8 @@ export default function PortalHome() {
           </section>
         ) : (
           <section className="portal-card-grid">
-            <PortalCard icon="🍽️" label="FOR HUNGRY STUDENTS" title="Find your next favourite meal." description="Browse open cafés, pay in seconds, and know exactly when your order is ready." action="Start ordering" onClick={() => navigate('/login?portal=student')} />
-            <PortalCard icon="🏪" label="FOR CAFÉ TEAMS" title="Run a calmer, faster counter." description="Manage menus, availability, and every incoming order from one dashboard." action="Manage cafés" onClick={() => navigate('/login?portal=vendor')} />
+            <PortalCard kind="student" icon="🍽️" label="STUDENT PORTAL" title="Student login" description="Order from campus cafés, pay online, and track every pickup." action="Continue as student" onClick={() => navigate('/login?portal=student')} />
+            <PortalCard kind="vendor" icon="🏪" label="VENDOR PORTAL" title="Vendor login" description="Manage café availability, menus, and live incoming orders." action="Continue as vendor" onClick={() => navigate('/login?portal=vendor')} />
           </section>
         )}
       </div>
@@ -45,9 +45,9 @@ export default function PortalHome() {
   );
 }
 
-const PortalCard = ({ icon, label, title, description, action, onClick }) => (
-  <article className="portal-card">
-    <div className="portal-card-icon">{icon}</div><span>{label}</span>
+const PortalCard = ({ kind, icon, label, title, description, action, onClick }) => (
+  <article className={`portal-card portal-card-${kind}`}>
+    <div className="portal-card-top"><div className="portal-card-icon">{icon}</div><span>{label}</span></div>
     <h2>{title}</h2><p>{description}</p>
     <button onClick={onClick} className="button button-primary">{action} <b>→</b></button>
   </article>
