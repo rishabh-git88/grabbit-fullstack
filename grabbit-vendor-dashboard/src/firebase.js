@@ -23,4 +23,6 @@ if (Object.values(firebaseConfig).some((value) => !value)) {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+// Always let people choose an account instead of silently reusing the last one.
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 export { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup };

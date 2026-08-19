@@ -23,4 +23,6 @@ if (Object.values(firebaseConfig).some((value) => !value)) {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+// Keep the fallback student app consistent with the unified portal.
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 export { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup };
