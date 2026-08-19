@@ -47,12 +47,16 @@ const getCafeMenu = async (req, res) => {
 // @access  Private (Vendor)
 const getManagedCafes = async (req, res) => {
   try {
-    const cafes = await Cafe.find({
-      $or: [
-        { vendorId: req.user._id },
-        { _id: { $in: req.user.managedCafeIds || [] } },
-      ],
-    }).sort('name');
+    // Avoid $or/$in here because this project enables Mongoose sanitizeFilter
+    // globally. A sanitized operator query can otherwise look like an empty
+    // vendor dashboard even when managedCafeIds are present.
+    const ownedCafes = await Cafe.find({ vendorId: req.user._id });
+    const managedCafes = (await Promise.all(
+      (req.user.managedCafeIds || []).map((cafeId) => Cafe.findById(cafeId))
+    )).filter(Boolean);
+    const cafes = [...new Map([...ownedCafes, ...managedCafes].map((cafe) => [cafe._id.toString(), cafe])).values()]
+      .sort((first, second) => first.name.localeCompare(second.name));
+    console.log(JSON.stringify({ event: 'managed_cafes_loaded', userId: req.user._id.toString(), cafeCount: cafes.length }));
     res.json({ success: true, count: cafes.length, cafes });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Unable to fetch managed cafes' });
