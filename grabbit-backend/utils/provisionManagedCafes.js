@@ -50,8 +50,18 @@ const grantConfiguredCafeAccess = async (email) => {
   const missing = cafeNames.filter((name) => !foundNames.has(name));
   if (missing.length) throw new Error(`Configured cafes were not found: ${missing.join(', ')}`);
 
-  user.managedCafeIds = cafes.map((cafe) => cafe._id);
-  await user.save();
+  const configuredCafeIds = cafes.map((cafe) => cafe._id);
+  const currentCafeIds = (user.managedCafeIds || []).map((cafeId) => cafeId.toString()).sort();
+  const nextCafeIds = configuredCafeIds.map((cafeId) => cafeId.toString()).sort();
+  const accessChanged = currentCafeIds.length !== nextCafeIds.length
+    || currentCafeIds.some((cafeId, index) => cafeId !== nextCafeIds[index]);
+
+  // This runs at startup and on a vendor's sign-in. Avoid a needless database
+  // write when the configured access is already current.
+  if (accessChanged) {
+    user.managedCafeIds = configuredCafeIds;
+    await user.save();
+  }
   return { userId: user._id.toString(), cafeCount: cafes.length };
 };
 

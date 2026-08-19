@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { isVendorUser } = require('../utils/vendorAccess');
-const { grantConfiguredCafeAccess } = require('../utils/provisionManagedCafes');
+const { grantConfiguredCafeAccess, parseVendorCafeAccess } = require('../utils/provisionManagedCafes');
 
 const protect = async (req, res, next) => {
   let token;
@@ -21,11 +21,15 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
 
-    // Keep allowlisted vendor access in sync even when the browser has an old
-    // login response. This is a no-op for all student accounts.
+    // A vendor with no saved café access may be using a token issued before
+    // provisioning. Upgrade that session once, but do not query and save all
+    // cafés for every normal authenticated request.
     try {
-      const result = await grantConfiguredCafeAccess(req.user.email);
-      if (result) req.user = await User.findById(decoded.id).select('-password');
+      const configuredCafes = parseVendorCafeAccess()[req.user.email?.trim().toLowerCase()];
+      if (configuredCafes?.length && !(req.user.managedCafeIds || []).length) {
+        const result = await grantConfiguredCafeAccess(req.user.email);
+        if (result) req.user = await User.findById(decoded.id).select('-password');
+      }
     } catch (error) {
       console.error(JSON.stringify({ event: 'configured_vendor_access_failed', message: error.message }));
     }
