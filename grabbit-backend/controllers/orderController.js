@@ -113,16 +113,21 @@ const getCafeOrders = async (req, res) => {
     const { status, limit = 50 } = req.query;
     const cafe = await Cafe.findById(req.params.cafeId);
     if (!canManageCafe(req.user, cafe)) return res.status(403).json({ success: false, message: 'Not authorized' });
-    const query = { cafeId: req.params.cafeId, paymentStatus: { $in: ['partial', 'full'] } };
-    if (status) query.status = status;
-
-    const orders = await Order.find(query)
-      .populate('userId', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100));
+    // Avoid $in because Mongoose sanitizeFilter is enabled globally. Fetch the
+    // two permitted payment states with exact queries and combine them safely.
+    const baseQuery = { cafeId: req.params.cafeId };
+    if (status) baseQuery.status = status;
+    const maxResults = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+    const [partiallyPaid, fullyPaid] = await Promise.all(['partial', 'full'].map((paymentStatus) => (
+      Order.find({ ...baseQuery, paymentStatus }).populate('userId', 'name email')
+    )));
+    const orders = [...partiallyPaid, ...fullyPaid]
+      .sort((first, second) => second.createdAt - first.createdAt)
+      .slice(0, maxResults);
 
     res.json({ success: true, count: orders.length, orders });
   } catch (error) {
+    console.error(JSON.stringify({ event: 'cafe_orders_failed', message: error.message }));
     res.status(500).json({ success: false, message: 'Unable to fetch cafe orders' });
   }
 };
