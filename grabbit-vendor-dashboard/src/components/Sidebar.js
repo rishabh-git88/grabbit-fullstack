@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import ThemeToggle from './ThemeToggle';
 
 const navItems = [
   { to: '/vendor',       icon: '⚡', label: 'Orders'   },
@@ -29,6 +30,7 @@ const Sidebar = ({ cafe, cafes, onCafeChange, isOpen, onToggleOpen }) => {
             <div className="font-display font-bold text-white text-lg leading-none">grabbit</div>
             <div className="text-[10px] text-[#8892A4] uppercase tracking-widest mt-0.5">Vendor</div>
           </div>
+          <div className="ml-auto"><ThemeToggle /></div>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import StudentOrderTracking from './student/pages/OrderTracking';
 import StudentOrders from './student/pages/Orders';
 import { CartProvider } from './student/context/CartContext';
 import { hasVendorAccess } from './utils/access';
+import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
 
 const VendorLayout = () => {
@@ -79,9 +80,10 @@ const VendorLayout = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <BrowserRouter>
           <Toaster position="top-right" toastOptions={{
             style: { background: '#16213E', color: '#F0F0F0', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' },
           }} />
@@ -96,9 +98,10 @@ function App() {
             <Route path="/student/orders" element={<StudentRoute><StudentOrders /></StudentRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
-      </CartProvider>
-    </AuthProvider>
+          </BrowserRouter>
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
