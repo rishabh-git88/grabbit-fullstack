@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   auth,
   googleProvider,
@@ -11,6 +11,26 @@ import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api';
 import { hasVendorAccess } from '../utils/access';
 import toast from 'react-hot-toast';
+
+const phoneAuthMessage = (error, stage) => {
+  switch (error?.code) {
+    case 'auth/operation-not-allowed':
+      return 'Phone login is not enabled in Firebase yet.';
+    case 'auth/invalid-app-credential':
+    case 'auth/captcha-check-failed':
+      return 'Security verification expired. Complete reCAPTCHA and try again.';
+    case 'auth/too-many-requests':
+      return 'Too many OTP requests. Please wait and try again later.';
+    case 'auth/invalid-phone-number':
+      return 'Enter a valid Indian mobile number.';
+    case 'auth/invalid-verification-code':
+      return 'The OTP is incorrect. Please try again.';
+    case 'auth/code-expired':
+      return 'The OTP has expired. Request a new one.';
+    default:
+      return stage === 'send' ? 'Could not send OTP. Please try again.' : 'Could not verify OTP. Please try again.';
+  }
+};
 
 export default function Login() {
   const [mode, setMode] = useState('google');
@@ -30,33 +50,45 @@ export default function Login() {
     if (user) navigate(portal === 'vendor' && hasVendorAccess(user) ? '/vendor' : '/student', { replace: true });
   }, [user, navigate, portal]);
 
-  const clearRecaptcha = () => {
+  const disposeRecaptcha = useCallback(() => {
     if (recaptchaRef.current) { recaptchaRef.current.clear(); recaptchaRef.current = null; }
     const el = document.getElementById('recaptcha-container');
     if (el) el.innerHTML = '';
+  }, []);
+
+  const clearRecaptcha = useCallback(() => {
+    disposeRecaptcha();
     setRecaptchaSolved(false);
-  };
+  }, [disposeRecaptcha]);
 
   const handleModeSwitch = (m) => { clearRecaptcha(); setMode(m); setStep(1); setOtp(''); setPhone(''); };
 
   useEffect(() => {
+    let disposed = false;
+    let timer;
     if (mode === 'phone' && step === 1) {
-      setTimeout(() => {
+      timer = window.setTimeout(async () => {
         try {
           clearRecaptcha();
+          if (disposed) return;
           recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
             size: 'normal',
             callback: () => setRecaptchaSolved(true),
             'expired-callback': () => setRecaptchaSolved(false)
           });
-          recaptchaRef.current.render();
-        } catch (e) { console.log(e); }
-      }, 500);
+          await recaptchaRef.current.render();
+        } catch (error) {
+          console.error('recaptcha_render_failed', error);
+          toast.error('Could not load security verification. Refresh and try again.');
+        }
+      }, 0);
     }
-    return () => {};
-  }, [mode, step]);
-
-  useEffect(() => { return () => clearRecaptcha(); }, []);
+    return () => {
+      disposed = true;
+      if (timer) window.clearTimeout(timer);
+      disposeRecaptcha();
+    };
+  }, [mode, step, clearRecaptcha, disposeRecaptcha]);
 
   const handleFirebaseLogin = async (firebaseToken) => {
     try {
@@ -86,24 +118,25 @@ export default function Login() {
 
   const handleSendOTP = async () => {
     if (!phone || phone.length < 10) { toast.error('Enter valid 10-digit number'); return; }
-    if (!recaptchaSolved) { toast.error('Complete reCAPTCHA first'); return; }
+    if (!recaptchaSolved || !recaptchaRef.current) { toast.error('Complete reCAPTCHA first'); return; }
     setLoading(true);
     try {
       const result = await signInWithPhoneNumber(auth, `+91${phone}`, recaptchaRef.current);
       setConfirmResult(result); setStep(2);
       toast.success(`OTP sent to +91 ${phone}`);
-    } catch (err) { toast.error(err.message || 'Failed to send OTP'); clearRecaptcha(); }
+    } catch (err) { toast.error(phoneAuthMessage(err, 'send')); clearRecaptcha(); }
     setLoading(false);
   };
 
   const handleVerifyOTP = async () => {
     if (!otp || otp.length !== 6) { toast.error('Enter 6-digit OTP'); return; }
+    if (!confirmResult) { toast.error('Request a new OTP first.'); return; }
     setLoading(true);
     try {
       const result = await confirmResult.confirm(otp);
       const firebaseToken = await result.user.getIdToken();
       await handleFirebaseLogin(firebaseToken);
-    } catch (err) { toast.error('Invalid OTP'); }
+    } catch (err) { toast.error(phoneAuthMessage(err, 'verify')); }
     setLoading(false);
   };
 
