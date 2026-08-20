@@ -5,7 +5,25 @@ A full-stack food ordering platform for college campuses. Students order food vi
 
 ---
 
-## 📁 Project Structure
+## Current Production Layout
+
+The repository contains a few earlier mobile and standalone web experiments. The actively deployed system is deliberately kept at its current paths because Render and Vercel use them as deployment roots.
+
+| Path | Status | Purpose |
+| --- | --- | --- |
+| `grabbit-backend/` | Active | Express, MongoDB, Socket.IO, Firebase verification and Razorpay API. Render deploy root. |
+| `grabbit-vendor-dashboard/` | Active | Unified React web portal. It contains both vendor routes and the student web experience under `src/student/`. Vercel deploy root. |
+| `render.yaml` | Active | Render service definition for `grabbit-backend/`. |
+| `grabbit-student-web/` | Legacy fallback | Earlier standalone student web app; retain only while its separate Vercel deployment is still needed. |
+| `grabbit-student-app/` | Legacy mobile | Earlier JavaScript React Native student app. |
+| `GrabbitApp/` | Experimental mobile | TypeScript React Native app. |
+| `grabbit-fullstack/` | Historical copy | Nested earlier repository copy; do not add features here. |
+
+See [Project map](docs/PROJECT_MAP.md) for where to place code and [deployment notes](docs/DEPLOYMENT.md) for the production roots.
+
+---
+
+## Legacy Overview
 
 ```
 grabbit/
