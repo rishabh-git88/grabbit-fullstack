@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { cafeAPI } from './api';
+import { cafeAPI, warmUpAPI } from './api';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
@@ -79,6 +79,10 @@ const VendorLayout = () => {
 };
 
 function App() {
+  useEffect(() => {
+    warmUpAPI();
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>

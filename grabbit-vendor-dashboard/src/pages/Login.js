@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { auth, googleProvider, signInWithPopup } from '../firebase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api';
+import { authAPI, warmUpAPI } from '../api';
 import { hasVendorAccess } from '../utils/access';
 import toast from 'react-hot-toast';
 
@@ -16,6 +16,10 @@ export default function Login() {
   useEffect(() => {
     if (user) navigate(portal === 'vendor' && hasVendorAccess(user) ? '/vendor' : '/student', { replace: true });
   }, [user, navigate, portal]);
+
+  useEffect(() => {
+    warmUpAPI();
+  }, []);
 
   const handleFirebaseLogin = async (firebaseToken) => {
     try {

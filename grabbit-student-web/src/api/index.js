@@ -8,6 +8,18 @@ if (!API_BASE) {
 
 const api = axios.create({ baseURL: API_BASE });
 
+// Start a Render instance while the visitor is choosing a Google account.
+// This request is deliberately not awaited, so it never blocks the UI.
+let warmUpRequest;
+export const warmUpAPI = () => {
+  if (!warmUpRequest) {
+    warmUpRequest = api.get('/health').catch(() => {}).finally(() => {
+      warmUpRequest = undefined;
+    });
+  }
+  return warmUpRequest;
+};
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('grabbit_student_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;

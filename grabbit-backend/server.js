@@ -114,6 +114,17 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   await mongoose.connect(process.env.MONGO_URI);
+  const PORT = process.env.PORT || 5000;
+  // Accept traffic as soon as the database is ready. The maintenance below is
+  // safe to run in the background and must not hold up a cold Render start.
+  server.listen(PORT, () => console.log(JSON.stringify({ event: 'server_started', port: PORT })));
+
+  void runStartupMaintenance().catch((error) => {
+    console.error(JSON.stringify({ event: 'startup_maintenance_failed', message: error.message }));
+  });
+};
+
+const runStartupMaintenance = async () => {
   // Earlier versions persisted null in unique sparse identity fields. Remove
   // those placeholders so each new Google account can be created independently.
   await Promise.all([
@@ -134,8 +145,6 @@ const startServer = async () => {
       console.error(JSON.stringify({ event: 'legacy_vendor_access_failed', message: error.message }));
     }
   }
-  const PORT = process.env.PORT || 5000;
-  server.listen(PORT, () => console.log(JSON.stringify({ event: 'server_started', port: PORT })));
 };
 
 const shutdown = (signal) => async () => {

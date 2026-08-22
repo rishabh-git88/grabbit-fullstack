@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { auth, googleProvider, signInWithPopup } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api';
+import { authAPI, warmUpAPI } from '../api';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -11,6 +11,10 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => { if (user) navigate('/', { replace: true }); }, [user, navigate]);
+
+  useEffect(() => {
+    warmUpAPI();
+  }, []);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
