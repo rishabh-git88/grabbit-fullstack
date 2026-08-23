@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
 const Cafe = require('../models/Cafe');
 const QRCode = require('qrcode');
+const mongoose = require('mongoose');
 const { canManageCafe } = require('../utils/vendorAccess');
 
 // @desc    Place a new order
@@ -132,6 +133,96 @@ const getCafeOrders = async (req, res) => {
   }
 };
 
+// @desc    Get a cafe's item-sales analytics for the last seven days
+// @route   GET /api/orders/cafe/:cafeId/analytics
+// @access  Private (Vendor who manages the cafe)
+const getCafeWeeklyAnalytics = async (req, res) => {
+  try {
+    const cafe = await Cafe.findById(req.params.cafeId);
+    if (!cafe || !canManageCafe(req.user, cafe)) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const now = new Date();
+    const currentStart = new Date(now);
+    currentStart.setDate(currentStart.getDate() - 7);
+    const previousStart = new Date(currentStart);
+    previousStart.setDate(previousStart.getDate() - 7);
+    const cafeId = new mongoose.Types.ObjectId(req.params.cafeId);
+    const paidOrderMatch = {
+      cafeId,
+      paymentStatus: { $in: ['partial', 'full'] },
+      status: { $ne: 'rejected' },
+    };
+
+    const [menu, currentItemStats, previousItemStats, summary, dailyStats] = await Promise.all([
+      MenuItem.find({ cafeId }).select('name category price isAvailable').lean(),
+      Order.aggregate([
+        { $match: { ...paidOrderMatch, createdAt: { $gte: currentStart } } },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.itemId', quantity: { $sum: '$items.quantity' }, revenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } } } },
+      ]),
+      Order.aggregate([
+        { $match: { ...paidOrderMatch, createdAt: { $gte: previousStart, $lt: currentStart } } },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.itemId', quantity: { $sum: '$items.quantity' } } },
+      ]),
+      Order.aggregate([
+        { $match: { ...paidOrderMatch, createdAt: { $gte: currentStart } } },
+        { $group: { _id: null, orderCount: { $sum: 1 }, revenue: { $sum: '$totalAmount' } } },
+      ]),
+      Order.aggregate([
+        { $match: { ...paidOrderMatch, createdAt: { $gte: currentStart } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, orders: { $sum: 1 }, revenue: { $sum: '$totalAmount' } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const currentByItem = new Map(currentItemStats.map((item) => [item._id.toString(), item]));
+    const previousByItem = new Map(previousItemStats.map((item) => [item._id.toString(), item.quantity]));
+    const items = menu.map((item) => {
+      const current = currentByItem.get(item._id.toString()) || { quantity: 0, revenue: 0 };
+      const previousQuantity = previousByItem.get(item._id.toString()) || 0;
+      return {
+        _id: item._id,
+        name: item.name,
+        category: item.category,
+        quantity: current.quantity,
+        revenue: current.revenue,
+        previousQuantity,
+        quantityChange: current.quantity - previousQuantity,
+        isAvailable: item.isAvailable,
+      };
+    });
+    const bestSellers = items.filter((item) => item.quantity > 0)
+      .sort((first, second) => second.quantity - first.quantity || second.revenue - first.revenue)
+      .slice(0, 5);
+    const needsAttention = items.filter((item) => item.isAvailable)
+      .sort((first, second) => first.quantity - second.quantity || first.name.localeCompare(second.name))
+      .slice(0, 5);
+    const dayByKey = new Map(dailyStats.map((day) => [day._id, { orders: day.orders, revenue: day.revenue }]));
+    const dailySales = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(currentStart);
+      date.setDate(currentStart.getDate() + index + 1);
+      const key = date.toISOString().slice(0, 10);
+      return { date: key, label: date.toLocaleDateString('en-IN', { weekday: 'short' }), ...(dayByKey.get(key) || { orders: 0, revenue: 0 }) };
+    });
+    const totals = summary[0] || { orderCount: 0, revenue: 0 };
+
+    res.json({
+      success: true,
+      period: { start: currentStart.toISOString(), end: now.toISOString(), days: 7 },
+      totals: { orders: totals.orderCount, revenue: Math.round(totals.revenue * 100) / 100, itemsSold: items.reduce((sum, item) => sum + item.quantity, 0) },
+      bestSellers,
+      needsAttention,
+      dailySales,
+    });
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'cafe_analytics_failed', message: error.message }));
+    res.status(500).json({ success: false, message: 'Unable to load weekly analytics' });
+  }
+};
+
 // @desc    Update order status
 // @route   PUT /api/orders/:id/status
 // @access  Private (Vendor)
@@ -207,4 +298,4 @@ const getOrder = async (req, res) => {
   }
 };
 
-module.exports = { placeOrder, getUserOrders, getCafeOrders, updateOrderStatus, getOrder };
+module.exports = { placeOrder, getUserOrders, getCafeOrders, getCafeWeeklyAnalytics, updateOrderStatus, getOrder };

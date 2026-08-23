@@ -7,6 +7,7 @@ import ThemeToggle from './ThemeToggle';
 const navItems = [
   { to: '/vendor',       icon: '⚡', label: 'Orders'   },
   { to: '/vendor/menu',   icon: '🍽️', label: 'Menu'     },
+  { to: '/vendor/analytics', icon: '📈', label: 'Analytics' },
   { to: '/vendor/settings', icon: '⚙️', label: 'Settings' },
 ];
 

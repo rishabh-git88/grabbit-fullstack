@@ -68,6 +68,7 @@ export const orderAPI = {
   get: (id) => api.get(`/orders/${id}`),
   getUserOrders: (userId) => api.get(`/orders/user/${userId}`),
   getCafeOrders: (cafeId, params) => api.get(`/orders/cafe/${cafeId}`, { params }),
+  getCafeAnalytics: (cafeId) => api.get(`/orders/cafe/${cafeId}/analytics`),
   updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
   collectRemainingPayment: (id) => api.post(`/payment/${id}/collect-remaining`),
 };

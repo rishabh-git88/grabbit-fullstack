@@ -9,6 +9,7 @@ import VendorRegister from './pages/VendorRegister';
 import Orders from './pages/Orders';
 import Menu from './pages/Menu';
 import Settings from './pages/Settings';
+import Analytics from './pages/Analytics';
 import PortalHome from './pages/PortalHome';
 import StudentHome from './student/pages/Home';
 import StudentMenu from './student/pages/Menu';
@@ -71,6 +72,7 @@ const VendorLayout = () => {
           <Routes>
             <Route index element={<Orders cafe={cafe} />} />
             <Route path="menu" element={<Menu cafe={cafe} />} />
+            <Route path="analytics" element={<Analytics cafe={cafe} />} />
             <Route path="settings" element={<Settings cafe={cafe} />} />
           </Routes>
         </div>
