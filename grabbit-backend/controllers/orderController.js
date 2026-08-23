@@ -133,7 +133,7 @@ const getCafeOrders = async (req, res) => {
   }
 };
 
-// @desc    Get a cafe's item-sales analytics for the last seven days
+// @desc    Get a cafe's item-sales analytics for today or the last seven days
 // @route   GET /api/orders/cafe/:cafeId/analytics
 // @access  Private (Vendor who manages the cafe)
 const getCafeWeeklyAnalytics = async (req, res) => {
@@ -143,11 +143,13 @@ const getCafeWeeklyAnalytics = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
+    const days = req.query.period === 'day' ? 1 : 7;
     const now = new Date();
     const currentStart = new Date(now);
-    currentStart.setDate(currentStart.getDate() - 7);
+    if (days === 1) currentStart.setHours(0, 0, 0, 0);
+    else currentStart.setDate(currentStart.getDate() - days);
     const previousStart = new Date(currentStart);
-    previousStart.setDate(previousStart.getDate() - 7);
+    previousStart.setDate(previousStart.getDate() - days);
     const cafeId = new mongoose.Types.ObjectId(req.params.cafeId);
     const paidOrderMatch = {
       cafeId,
@@ -201,17 +203,17 @@ const getCafeWeeklyAnalytics = async (req, res) => {
       .sort((first, second) => first.quantity - second.quantity || first.name.localeCompare(second.name))
       .slice(0, 5);
     const dayByKey = new Map(dailyStats.map((day) => [day._id, { orders: day.orders, revenue: day.revenue }]));
-    const dailySales = Array.from({ length: 7 }, (_, index) => {
+    const dailySales = Array.from({ length: days }, (_, index) => {
       const date = new Date(currentStart);
       date.setDate(currentStart.getDate() + index + 1);
       const key = date.toISOString().slice(0, 10);
-      return { date: key, label: date.toLocaleDateString('en-IN', { weekday: 'short' }), ...(dayByKey.get(key) || { orders: 0, revenue: 0 }) };
+      return { date: key, label: days === 1 ? 'Today' : date.toLocaleDateString('en-IN', { weekday: 'short' }), ...(dayByKey.get(key) || { orders: 0, revenue: 0 }) };
     });
     const totals = summary[0] || { orderCount: 0, revenue: 0 };
 
     res.json({
       success: true,
-      period: { start: currentStart.toISOString(), end: now.toISOString(), days: 7 },
+      period: { start: currentStart.toISOString(), end: now.toISOString(), days },
       totals: { orders: totals.orderCount, revenue: Math.round(totals.revenue * 100) / 100, itemsSold: items.reduce((sum, item) => sum + item.quantity, 0) },
       bestSellers,
       needsAttention,
