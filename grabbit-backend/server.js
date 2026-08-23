@@ -18,6 +18,7 @@ const cafeRoutes = require('./routes/cafe');
 const menuRoutes = require('./routes/menu');
 const orderRoutes = require('./routes/order');
 const paymentRoutes = require('./routes/payment');
+const reviewRoutes = require('./routes/review');
 const firebaseAuthRoutes = require('./routes/firebaseAuth');
 const { paymentWebhook } = require('./controllers/paymentController');
 const { isVendorUser, canManageCafe } = require('./utils/vendorAccess');
@@ -57,6 +58,7 @@ app.use('/api/cafes', cafeRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/reviews', reviewRoutes);
 app.use('/api/auth', firebaseAuthRoutes);
 
 // Health check

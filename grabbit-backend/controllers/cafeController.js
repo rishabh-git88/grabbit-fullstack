@@ -1,6 +1,7 @@
 const Cafe = require('../models/Cafe');
 const MenuItem = require('../models/MenuItem');
 const { canManageCafe } = require('../utils/vendorAccess');
+const { getCafeRecommendations } = require('../utils/cafeRecommendations');
 
 // @desc    Get all cafes
 // @route   GET /api/cafes
@@ -36,7 +37,8 @@ const getCafeMenu = async (req, res) => {
     if (!cafe) return res.status(404).json({ success: false, message: 'Cafe not found' });
 
     const menu = await MenuItem.find({ cafeId: req.params.id, isAvailable: true }).sort('category');
-    res.json({ success: true, cafe, menu });
+    const recommendations = await getCafeRecommendations(cafe._id);
+    res.json({ success: true, cafe, menu, recommendations });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Unable to fetch menu' });
   }

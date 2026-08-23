@@ -77,4 +77,8 @@ export const paymentAPI = {
   verify: (data) => api.post('/payment/verify', data),
 };
 
+export const reviewAPI = {
+  save: (data) => api.post('/reviews', data),
+};
+
 export default api;

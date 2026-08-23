@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { orderAPI } from '../../api';
+import { orderAPI, reviewAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -11,6 +11,16 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const rateItem = async (event, order, item, rating) => {
+    event.stopPropagation();
+    try {
+      await reviewAPI.save({ orderId: order._id, itemId: item.itemId, rating });
+      toast.success(`Rated ${item.name} ${rating}/5`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not save your rating.');
+    }
+  };
 
   useEffect(() => {
     orderAPI.getUserOrders(user._id).then(res => { setOrders(res.data.orders || []); setLoading(false); })
@@ -44,6 +54,10 @@ export default function Orders() {
                 <span style={{ color: STATUS_COLORS[order.status], fontWeight: 600, fontSize: 13 }}>● {order.status.toUpperCase()}</span>
               </div>
               <p style={{ color: '#6b7280', margin: '0 0 8px', fontSize: 13 }}>{order.items.map(i => i.name).join(', ')}</p>
+              {order.status === 'completed' && <div onClick={(event) => event.stopPropagation()} style={{ borderTop: '1px solid #2d3148', paddingTop: 10, marginTop: 10 }}>
+                <span style={{ color: '#9ca3af', fontSize: 12 }}>Rate your order:</span>
+                {order.items.map(item => <div key={item.itemId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}><span style={{ color: '#d1d5db', fontSize: 13 }}>{item.name}</span><span>{[1, 2, 3, 4, 5].map(rating => <button key={rating} onClick={(event) => rateItem(event, order, item, rating)} aria-label={`Rate ${item.name} ${rating} stars`} style={{ background: 'transparent', border: 0, color: '#fbbf24', cursor: 'pointer', fontSize: 17, padding: '0 2px' }}>☆</button>)}</span></div>)}
+              </div>}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#9ca3af', fontSize: 12 }}>{new Date(order.createdAt).toLocaleDateString()}</span>
                 <span style={{ color: '#f97316', fontWeight: 600 }}>₹{order.totalAmount}</span>
