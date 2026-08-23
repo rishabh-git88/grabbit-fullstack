@@ -1,5 +1,6 @@
 const splitOrigins = (value = '') => value.split(',').map((origin) => origin.trim()).filter(Boolean);
 const getRazorpayMode = () => (process.env.RAZORPAY_MODE || 'live').toLowerCase();
+const productionPortalOrigins = ['https://grabbit-campus.vercel.app'];
 
 const required = [
   'MONGO_URI',
@@ -17,6 +18,7 @@ const getAllowedOrigins = () => [
   ...splitOrigins(process.env.VENDOR_DASHBOARD_URL),
   ...splitOrigins(process.env.STUDENT_APP_URL),
   ...splitOrigins(process.env.ADDITIONAL_ALLOWED_ORIGINS),
+  ...productionPortalOrigins,
 ];
 
 const validateEnvironment = () => {

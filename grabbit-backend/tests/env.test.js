@@ -13,6 +13,7 @@ test('CORS only allows configured origins', () => {
     'https://vendor.example.com',
     'https://student.example.com',
     'https://preview.example.com',
+    'https://grabbit-campus.vercel.app',
   ]);
   isAllowedOrigin('https://student.example.com', (error, allowed) => {
     assert.equal(error, null);
