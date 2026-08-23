@@ -147,6 +147,9 @@ export default function Login() {
           </div>
 
           <button onClick={() => navigate('/')} style={{ width: '100%', background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 12, marginTop: 24 }}>← Choose a different dashboard</button>
+          {portal === 'vendor' && (
+            <button onClick={() => navigate('/vendor/register')} style={{ width: '100%', background: 'transparent', border: 'none', color: '#fb923c', cursor: 'pointer', fontSize: 13, marginTop: 14 }}>New vendor? Register your cafe →</button>
+          )}
         </div>
       </div>
 

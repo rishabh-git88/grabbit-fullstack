@@ -4,6 +4,7 @@ const { cert, getApps, initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Cafe = require('../models/Cafe');
 const { buildFirebaseStudent } = require('../utils/firebaseUser');
 const { grantAllCafeAccess, grantConfiguredCafeAccess } = require('../utils/provisionManagedCafes');
 
@@ -28,19 +29,42 @@ const findUserByFirebaseIdentity = async ({ uid, email, phone }) => {
   return user;
 };
 
-router.post('/firebase-login', async (req, res) => {
-  const { firebaseToken } = req.body;
+const createSession = (user) => {
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d'
+  });
+
+  return {
+    token,
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      cafeId: user.cafeId,
+      managedCafeIds: user.managedCafeIds || [],
+    },
+  };
+};
+
+const verifyFirebaseToken = async (firebaseToken, res) => {
   if (!firebaseToken) {
-    return res.status(400).json({ success: false, message: 'Firebase token required' });
+    res.status(400).json({ success: false, message: 'Firebase token required' });
+    return null;
   }
 
-  let decoded;
   try {
-    decoded = await getAuth().verifyIdToken(firebaseToken);
+    return await getAuth().verifyIdToken(firebaseToken);
   } catch (err) {
     console.error(JSON.stringify({ event: 'firebase_token_verification_failed', code: err.code, message: err.message }));
-    return res.status(401).json({ success: false, message: 'Google sign-in could not be verified. Please try again.' });
+    res.status(401).json({ success: false, message: 'Google sign-in could not be verified. Please try again.' });
+    return null;
   }
+};
+
+router.post('/firebase-login', async (req, res) => {
+  const decoded = await verifyFirebaseToken(req.body.firebaseToken, res);
+  if (!decoded) return;
 
   try {
     const email = decoded.email?.trim().toLowerCase();
@@ -85,28 +109,82 @@ router.post('/firebase-login', async (req, res) => {
       user = await User.findById(user._id);
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE || '7d'
-    });
-
     res.json({
       success: true,
       message: 'Login successful',
-      token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        cafeId: user.cafeId,
-        managedCafeIds: user.managedCafeIds || [],
-      }
+      ...createSession(user),
     });
   } catch (err) {
     // Provisioning failures are not token failures. Keep the detailed cause in
     // Render logs while giving the person signing in an actionable retry.
     console.error(JSON.stringify({ event: 'firebase_account_provisioning_failed', code: err.code, message: err.message }));
     res.status(500).json({ success: false, message: 'We could not set up your account. Please try again.' });
+  }
+});
+
+// @desc    Register a Google-authenticated vendor and their first cafe
+// @route   POST /api/auth/vendor-register
+// @access  Public (Firebase token required)
+router.post('/vendor-register', async (req, res) => {
+  const { cafeName, description = '', location = '' } = req.body;
+  const normalizedCafeName = typeof cafeName === 'string' ? cafeName.trim() : '';
+
+  if (!normalizedCafeName || normalizedCafeName.length > 80) {
+    return res.status(400).json({ success: false, message: 'Enter a cafe name between 1 and 80 characters.' });
+  }
+  if (typeof description !== 'string' || description.length > 500 || typeof location !== 'string' || location.length > 160) {
+    return res.status(400).json({ success: false, message: 'Cafe details are too long.' });
+  }
+
+  const decoded = await verifyFirebaseToken(req.body.firebaseToken, res);
+  if (!decoded) return;
+
+  try {
+    const email = decoded.email?.trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'A Google account with an email address is required.' });
+    }
+
+    let user = await findUserByFirebaseIdentity({ uid: decoded.uid, email, phone: decoded.phone_number });
+    if (user?.firebaseUid && user.firebaseUid !== decoded.uid) {
+      return res.status(403).json({ success: false, message: 'This account is linked to another sign-in method.' });
+    }
+    if (user?.role === 'vendor' || user?.cafeId || user?.managedCafeIds?.length) {
+      return res.status(409).json({ success: false, message: 'This Google account is already registered as a vendor.' });
+    }
+
+    if (!user) {
+      user = await User.create(buildFirebaseStudent(decoded));
+    } else if (!user.firebaseUid) {
+      user.firebaseUid = decoded.uid;
+      if (!user.phone && decoded.phone_number) user.phone = decoded.phone_number;
+      await user.save();
+    }
+
+    const existingCafe = await Cafe.findOne({ name: normalizedCafeName });
+    if (existingCafe) {
+      return res.status(409).json({ success: false, message: 'A cafe with this name is already registered. Use a distinct cafe name.' });
+    }
+
+    const cafe = await Cafe.create({
+      name: normalizedCafeName,
+      description: description.trim(),
+      location: location.trim(),
+      vendorId: user._id,
+    });
+    user.role = 'vendor';
+    user.cafeId = cafe._id;
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Vendor account and cafe registered successfully.',
+      cafe,
+      ...createSession(user),
+    });
+  } catch (err) {
+    console.error(JSON.stringify({ event: 'vendor_registration_failed', code: err.code, message: err.message }));
+    res.status(500).json({ success: false, message: 'We could not register your cafe. Please try again.' });
   }
 });
 

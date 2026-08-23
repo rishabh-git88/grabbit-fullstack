@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { cafeAPI, warmUpAPI } from './api';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
+import VendorRegister from './pages/VendorRegister';
 import Orders from './pages/Orders';
 import Menu from './pages/Menu';
 import Settings from './pages/Settings';
@@ -93,6 +94,7 @@ function App() {
           }} />
           <Routes>
             <Route path="/login" element={<LoginGuard />} />
+            <Route path="/vendor/register" element={<VendorRegister />} />
             <Route path="/vendor/*" element={<VendorLayout />} />
             <Route path="/" element={<PortalHome />} />
             <Route path="/student" element={<StudentRoute><StudentHome /></StudentRoute>} />

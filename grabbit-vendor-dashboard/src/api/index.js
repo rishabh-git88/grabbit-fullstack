@@ -44,6 +44,7 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   me: () => api.get('/auth/me'),
   firebaseLogin: (data) => api.post('/auth/firebase-login', data),
+  vendorRegister: (data) => api.post('/auth/vendor-register', data),
 };
 
 export const cafeAPI = {
