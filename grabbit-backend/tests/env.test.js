@@ -35,6 +35,8 @@ const productionEnvironment = {
   FIREBASE_PROJECT_ID: 'example-project',
   FIREBASE_CLIENT_EMAIL: 'firebase@example-project.iam.gserviceaccount.com',
   FIREBASE_PRIVATE_KEY: 'test-private-key',
+  RESEND_API_KEY: 're_test_key',
+  PARENT_APPROVAL_EMAIL: 'parent@example.com',
   RAZORPAY_KEY_SECRET: 'test-secret',
   RAZORPAY_WEBHOOK_SECRET: 'webhook-secret',
 };

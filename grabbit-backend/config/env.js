@@ -9,6 +9,8 @@ const required = [
   'FIREBASE_PROJECT_ID',
   'FIREBASE_CLIENT_EMAIL',
   'FIREBASE_PRIVATE_KEY',
+  'RESEND_API_KEY',
+  'PARENT_APPROVAL_EMAIL',
 ];
 
 const getAllowedOrigins = () => [
