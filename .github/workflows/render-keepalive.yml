@@ -1,0 +1,15 @@
+name: Keep Render API warm
+
+on:
+  schedule:
+    # Render Free services sleep after 15 idle minutes. Ten minutes leaves
+    # enough margin while keeping the API ready for sign-in requests.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the API health endpoint
+        run: curl --fail --silent --show-error --retry 2 --max-time 90 https://grabbit-fullstack.onrender.com/api/health
